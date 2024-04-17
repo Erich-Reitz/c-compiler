@@ -80,8 +80,8 @@ Value GenerateIRForRhs(std::vector<Operation> &ins, const ast::Node *node,
     }
     case ast::NodeType::Call: {
         std::vector<Value> args;
-        for (const auto &arg : node->callArgs) {
-            args.push_back(GenerateIRForRhs(ins, arg.get(), ctx));
+        for (auto [arg, idx] = std::tuple{node->callArgs.begin(), 0}; arg != node->callArgs.end(); ++arg, ++idx) {
+            args.push_back(GenerateIRForRhs(ins, arg->get(), ctx));
         }
         const auto returnSize = node->returnType.size;
         auto dst = ctx.newTemp(returnSize);
@@ -230,17 +230,21 @@ Produce_IR(const std::vector<std::unique_ptr<ast::Node>> &nodes) {
         }
         const auto name = node->functionName;
         std::vector<Operation> instructions;
-        unsigned long idx = 0;
-        for (const auto &p : node->params) {
+        for (auto [p, idx] = std::tuple{node->params.begin(), 0}; p != node->params.end(); ++p, ++idx) {
+            if (idx >= target::param_regs.size()) {
+                auto var = ast::makeNewVar(p->name, p->type);
+                auto dst = ctx.AddVariable(var.get());
+                auto i = DefineStackPushed{.name = p->name, .size = p->type.size};
+                instructions.push_back(i);
+                continue;
+            }
             // create a variable node for the paramter
-            auto var = ast::makeNewVar(p.name, p.type);
-            std::cout << p.type.ToString() << std::endl;
+            auto var = ast::makeNewVar(p->name, p->type);
             // create a stack location for the variable
             auto dst = ctx.AddVariable(var.get());
             const auto param_register = target::param_regs.at(idx);
-            auto src = HardcodedRegister{.reg = param_register, .size = p.type.size};
+            auto src = HardcodedRegister{.reg = param_register, .size = p->type.size};
             instructions.push_back(MovR{.dst = dst, .src = src});
-            idx++;
         }
         auto body = std::move(node->body);
         for (const auto &item : body) {

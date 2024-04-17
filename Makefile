@@ -1,5 +1,5 @@
 CC := clang++
-CXXFLAGS := -Wall -Wextra -Wshadow -Weffc++ -Wreorder -Wmissing-declarations -Wextra-semi -Wsign-conversion	-Wswitch-default  -Wuninitialized -Wnull-dereference -Wdouble-promotion -Wnon-virtual-dtor -pedantic -Wunused-function -Wold-style-cast -Wunused -Woverloaded-virtual -Wconversion -std=c++2b -g  
+CXXFLAGS := -g -Wall -Wextra -Wshadow -Weffc++ -Wreorder -Wmissing-declarations -Wextra-semi -Wsign-conversion	-Wswitch-default  -Wuninitialized -Wnull-dereference -Wdouble-promotion -Wnon-virtual-dtor -pedantic -Wunused-function -Wold-style-cast -Wunused -Woverloaded-virtual -Wconversion -std=c++2b -g  
 
 
 SRC_DIR := ./src

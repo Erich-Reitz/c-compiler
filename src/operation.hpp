@@ -99,8 +99,13 @@ struct DerefStore {
     Value src;
 };
 
+struct DefineStackPushed {
+    std::string name;
+    int size;
+};
+
 using Operation =
-    std::variant<Mov, Ret, Add, Sub, MovR, Addr, Deref, StoreAddr, Compare,
+    std::variant<Mov, Ret, Add, Sub, MovR,Addr, DefineStackPushed, Deref, StoreAddr, Compare,
     Equal, ConditionalJumpEqual,ConditionalJumpGreater, LabelDef, Call, DerefStore, GreaterThan>;
 
 using CondJ =

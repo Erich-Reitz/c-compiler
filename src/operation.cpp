@@ -71,6 +71,9 @@ std::ostream &operator<<(std::ostream &os, const Operation &ins) {
     } else if (std::holds_alternative<ConditionalJumpGreater>(ins)) {
         const auto &cj = std::get<ConditionalJumpGreater>(ins);
         os << "cjg " << cj.trueLabel << ", " << cj.falseLabel;
+    } else if (std::holds_alternative<DefineStackPushed>(ins)) {
+        const auto &dsp = std::get<DefineStackPushed>(ins);
+        os << "DefineStackPushed " << dsp.name << ", " << dsp.size;
     } else {
         throw std::runtime_error("Unknown instruction type " +
                                  std::to_string(ins.index()));

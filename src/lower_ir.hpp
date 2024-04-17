@@ -18,9 +18,11 @@ struct Ctx {
     std::vector<Instruction> toLocation(Location l, qa_ir::Value v);
     [[nodiscard]] int get_stack_offset() const;
 
+    int stackPassedParameterOffset = 16;
   private:
     int tempCounter = 0;
     int stackOffset = 0;
+
 };
 
 [[nodiscard]] std::vector<Frame> LowerIR(const std::vector<qa_ir::Frame> &ops);

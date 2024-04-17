@@ -48,7 +48,7 @@ _Value_To_Location(Register r, qa_ir::HardcodedRegister t, Ctx *ctx) {
 
 [[nodiscard]] std::vector<Instruction>
 _Value_To_Location(Register r_dst, qa_ir::Variable v_src, Ctx *ctx) {
-    const auto variableOffset = ctx->variable_offset[v_src.name];
+    const auto variableOffset = ctx->variable_offset.at(v_src.name);
     return {Load{.dst = r_dst, .src = StackLocation{.offset = variableOffset}}};
 }
 
@@ -64,7 +64,7 @@ _Value_To_Location(StackLocation s_dst, qa_ir::Variable v_src, Ctx *ctx) {
     const auto reg = ctx->NewRegister(v_src.size);
     auto result = std::vector<Instruction> {};
     // move variable to register
-    const auto variableOffset = ctx->variable_offset[v_src.name];
+    const auto variableOffset = ctx->variable_offset.at(v_src.name);
     result.push_back(
               Load{.dst = reg, .src = StackLocation{.offset = variableOffset}});
     // store register to stack
@@ -331,7 +331,16 @@ LowerConditionalJumpGreaterInstruction(qa_ir::ConditionalJumpGreater cj, Ctx &ct
         Ctx &ctx) {
     auto dest = ctx.AllocateNew(call.dst);
     std::vector<Instruction> result;
-    for (size_t i = 0; i < call.args.size(); i++) {
+    for (int i = call.args.size() - 1; i >= 0 ; i--) {
+        if (i >= 6) {
+            const qa_ir::Value arg = call.args[i];
+            if (std::holds_alternative<int>(arg)) {
+                PushI push = PushI{.src = std::get<int>(arg)};
+                result.push_back(push);
+                continue;
+            }
+            throw std::runtime_error("can't handle non hardcoded int for >= 6");
+        }
         const auto arg = call.args[i];
         const auto argbase = target::param_regs[i];
         const auto argsize = SizeOf(arg);
@@ -363,7 +372,7 @@ LowerConditionalJumpGreaterInstruction(qa_ir::ConditionalJumpGreater cj, Ctx &ct
     std::vector<Instruction> result;
     const auto temp = std::get<qa_ir::Temp>(addr.dst);
     const auto variable = std::get<qa_ir::Variable>(addr.src);
-    const auto variableOffset = ctx.variable_offset[variable.name];
+    const auto variableOffset = ctx.variable_offset.at(variable.name);
     const auto reg = ctx.AllocateNewForTemp(temp);
     result.push_back(
               Lea{.dst = reg, .src = StackLocation{.offset = variableOffset}});
@@ -375,7 +384,7 @@ LowerConditionalJumpGreaterInstruction(qa_ir::ConditionalJumpGreater cj, Ctx &ct
     std::vector<Instruction> result;
     const auto temp = std::get<qa_ir::Temp>(deref.dst);
     const auto variable = std::get<qa_ir::Variable>(deref.src);
-    const auto variableOffset = ctx.variable_offset[variable.name];
+    const auto variableOffset = ctx.variable_offset.at(variable.name);
     const auto depth = deref.depth;
     auto reg = ctx.NewRegister(8);
     result.push_back(
@@ -451,7 +460,15 @@ LowerInstruction(const qa_ir::Operation &op, Ctx &ctx) {
         } else if constexpr (std::is_same_v<T, qa_ir::GreaterThan>) {
             return LowerArth(ast::BinOpKind::Gt, arg.dst, arg.left, arg.right,
                              ctx);
-        } else {
+        } else if constexpr (std::is_same_v<T, qa_ir::DefineStackPushed>) {
+            const auto size = arg.size;
+            const auto name = arg.name;
+            ctx.variable_offset[name] = - ctx.stackPassedParameterOffset;
+            ctx.stackPassedParameterOffset += size;
+            return {};
+        }
+
+        else {
             throw std::runtime_error(
                 "LowerInstruction not implemented for type: " +
                 std::to_string(static_cast<int>(op.index())));
@@ -468,6 +485,9 @@ LowerIR(const std::vector<qa_ir::Frame> &frames) {
         Ctx ctx = Ctx{};
         for (const auto &op : f.instructions) {
             auto ins = LowerInstruction(op, ctx);
+            if (ins.empty()) {
+                continue;
+            }
             instructions.insert(instructions.end(), ins.begin(), ins.end());
         }
         auto new_frame = Frame{f.name, instructions, ctx.get_stack_offset()};

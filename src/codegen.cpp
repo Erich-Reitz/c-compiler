@@ -23,6 +23,13 @@ void MoveInstruction(const target::Mov mov, Ctx &ctx) {
     ctx.AddInstruction("mov " + target::to_asm(mov));
 }
 
+std::string to_asm(target::StackLocation sl) {
+    if (sl.offset >= 0) {
+        return " [rbp - " + std::to_string(sl.offset) + "]";
+    }
+    return " [rbp + " + std::to_string(-sl.offset) + "]";
+}
+
 void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
     // std::cout << "codegen for " << is << std::endl;
     if (std::holds_alternative<target::Mov>(is)) {
@@ -38,16 +45,14 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
     } else if (std::holds_alternative<target::StoreI>(is)) {
         const auto storeI = std::get<target::StoreI>(is);
         const auto sourcesizeString = std::string("dword");
-        ctx.AddInstruction("mov " + sourcesizeString + " [rbp - " +
-                           std::to_string(storeI.dst.offset) + "], " +
+        ctx.AddInstruction("mov " + sourcesizeString + to_asm(storeI.dst) + ", " +
                            std::to_string(storeI.value));
     } else if (std::holds_alternative<target::Store>(is)) {
         const auto store = std::get<target::Store>(is);
         const auto src = std::get<target::HardcodedRegister>(store.src);
         const auto sourcesizeString =
             src.size == 4 ? std::string("dword") : std::string("qword");
-        ctx.AddInstruction("mov " + sourcesizeString + " [rbp - " +
-                           std::to_string(store.dst.offset) + "], " +
+        ctx.AddInstruction("mov " + sourcesizeString + to_asm(store.dst) + ", " +
                            target::to_asm(src.reg, src.size));
     } else if (std::holds_alternative<target::Load>(is)) {
         const auto load = std::get<target::Load>(is);
@@ -55,8 +60,7 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         const auto sourcesizeString =
             dst.size == 4 ? std::string("dword") : std::string("qword");
         ctx.AddInstruction("mov " + target::to_asm(dst.reg, dst.size) + ", " +
-                           sourcesizeString + " [rbp - " +
-                           std::to_string(load.src.offset) + "]");
+                           sourcesizeString + to_asm(load.src));
     } else if (std::holds_alternative<target::AddI>(is)) {
         const auto addI = std::get<target::AddI>(is);
         const auto dst = std::get<target::HardcodedRegister>(addI.dst);
@@ -134,6 +138,9 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         ctx.AddInstruction("setg al");
         const auto dst = std::get<target::HardcodedRegister>(SetGAl.dst);
         ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) + ", al");
+    } else if (std::holds_alternative<target::PushI>(is)) {
+        const auto pushI = std::get<target::PushI>(is);
+        ctx.AddInstruction("push " + std::to_string(pushI.src));
     } else {
         throw std::runtime_error("Unsupported instruction type" +
                                  std::to_string(is.index()));
