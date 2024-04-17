@@ -339,6 +339,15 @@ LowerConditionalJumpGreaterInstruction(qa_ir::ConditionalJumpGreater cj, Ctx &ct
                 result.push_back(push);
                 continue;
             }
+            if (std::holds_alternative<qa_ir::Variable>(arg)) {
+                const auto reg = ctx.NewRegister(SizeOf(arg));
+                const auto variable = std::get<qa_ir::Variable>(arg);
+                const auto variableOffset = ctx.variable_offset.at(variable.name);
+                result.push_back(
+                          Load{.dst = reg, .src = StackLocation{.offset = variableOffset}});
+                result.push_back(Push{.src = reg});
+                continue;
+            }
             throw std::runtime_error("can't handle non hardcoded int for >= 6");
         }
         const auto arg = call.args[i];
@@ -464,7 +473,8 @@ LowerInstruction(const qa_ir::Operation &op, Ctx &ctx) {
             const auto size = arg.size;
             const auto name = arg.name;
             ctx.variable_offset[name] = - ctx.stackPassedParameterOffset;
-            ctx.stackPassedParameterOffset += size;
+            // 8 not size because (push) is 8 bytes
+            ctx.stackPassedParameterOffset += 8;
             return {};
         }
 

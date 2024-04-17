@@ -174,10 +174,14 @@ struct PushI {
     int src;
 } ;
 
+struct Push {
+    Register src;
+};
+
 using Instruction =
     std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,
     Cmp, CmpI, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-    IndirectStore, PushI>;
+    IndirectStore, PushI, Push>;
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction &ins);
 std::optional<int> get_dest_virtual_id_if_present(const Instruction &ins);
