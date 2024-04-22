@@ -78,6 +78,9 @@ std::ostream& operator<<(std::ostream& os, const Operation& ins) {
     } else if (std::holds_alternative<ConditionalJumpLess>(ins)) {
         const auto& cj = std::get<ConditionalJumpLess>(ins);
         os << "cjl " << cj.trueLabel << ", " << cj.falseLabel;
+    } else if (std::holds_alternative<NotEqual>(ins)) {
+        const auto& neq = std::get<NotEqual>(ins);
+        os << "neq " << neq.dst << ", " << neq.left << ", " << neq.right;
     } else {
         throw std::runtime_error("Unknown instruction type " +
                                  std::to_string(ins.index()));

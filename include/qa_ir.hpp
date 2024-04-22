@@ -80,6 +80,12 @@ struct Equal {
     Value right;
 };
 
+struct NotEqual {
+    Value dst;
+    Value left;
+    Value right;
+};
+
 struct GreaterThan {
     Value dst;
     Value left;
@@ -131,7 +137,7 @@ using Operation =
     std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref,
                  Compare, Jump, Equal, ConditionalJumpEqual,
                  ConditionalJumpGreater, LabelDef, Call, DerefStore,
-                 GreaterThan, ConditionalJumpLess>;
+                 GreaterThan, ConditionalJumpLess, NotEqual>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater>;
 

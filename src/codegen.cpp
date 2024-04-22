@@ -160,6 +160,12 @@ void generateASMForInstruction(const target::Instruction& is, Ctx& ctx) {
     } else if (std::holds_alternative<target::JumpLess>(is)) {
         const auto jump = std::get<target::JumpLess>(is);
         ctx.AddInstruction("jl ." + jump.label);
+    } else if (std::holds_alternative<target::SetNeAl>(is)) {
+        const auto SetNeAl = std::get<target::SetNeAl>(is);
+        ctx.AddInstruction("setne al");
+        const auto dst = std::get<target::HardcodedRegister>(SetNeAl.dst);
+        ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) +
+                           ", al");
     } else {
         throw std::runtime_error("Unsupported instruction type" +
                                  std::to_string(is.index()));

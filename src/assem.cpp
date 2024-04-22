@@ -42,6 +42,11 @@ Value GenerateIRForRhs(std::vector<Operation>& ins, const ast::Node* node,
                     GreaterThan{.dst = dst, .left = lhs, .right = rhs};
                 ins.emplace_back(binop_instruction);
                 return dst;
+            } else if (node->binOpKind == ast::BinOpKind::Neq) {
+                auto binop_instruction =
+                    NotEqual{.dst = dst, .left = lhs, .right = rhs};
+                ins.emplace_back(binop_instruction);
+                return dst;
             } else {
                 throw std::runtime_error(
                     "GenerateIRForRhs not implemented for binop: " +

@@ -23,7 +23,7 @@ enum class NodeType {
     ForLoop
 };
 
-enum class BinOpKind { Add, Sub, Eq, Gt, Lt };
+enum class BinOpKind { Add, Sub, Eq, Gt, Lt, Neq };
 
 [[nodiscard]] auto is_arithmetic(BinOpKind kind) -> bool;
 [[nodiscard]] auto is_comparison(BinOpKind kind) -> bool;

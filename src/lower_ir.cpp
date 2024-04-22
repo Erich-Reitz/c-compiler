@@ -256,6 +256,10 @@ std::vector<Instruction> Create_Comparison_Instruction_Sequence(
             {ast::BinOpKind::Gt,
              [](std::vector<Instruction>& result, Register newReg) {
                  result.push_back(SetGAl{.dst = newReg});
+             }},
+            {ast::BinOpKind::Neq,
+             [](std::vector<Instruction>& result, Register newReg) {
+                 result.push_back(SetNeAl{.dst = newReg});
              }}};
     std::vector<Instruction> result = {Cmp{.dst = reg1, .src = reg2}};
     Register newReg = ctx.NewRegister(4);
@@ -526,6 +530,11 @@ auto LowerInstruction(qa_ir::Sub arg, Ctx& ctx) -> std::vector<Instruction> {
 
 auto LowerInstruction(qa_ir::Equal arg, Ctx& ctx) -> std::vector<Instruction> {
     return LowerArth(ast::BinOpKind::Eq, arg.dst, arg.left, arg.right, ctx);
+}
+
+auto LowerInstruction(qa_ir::NotEqual arg, Ctx& ctx)
+    -> std::vector<Instruction> {
+    return LowerArth(ast::BinOpKind::Neq, arg.dst, arg.left, arg.right, ctx);
 }
 
 auto LowerInstruction(qa_ir::GreaterThan arg, Ctx& ctx)

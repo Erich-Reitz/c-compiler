@@ -186,6 +186,9 @@ std::ostream& operator<<(std::ostream& os, const Instruction& ins) {
     } else if (std::holds_alternative<JumpLess>(ins)) {
         const auto jumpLess = std::get<JumpLess>(ins);
         os << "jl " << jumpLess.label;
+    } else if (std::holds_alternative<SetNeAl>(ins)) {
+        const auto setAl = std::get<SetNeAl>(ins);
+        os << "SetNeAl " << setAl.dst;
     } else {
         throw std::runtime_error("Unsupported instruction type");
     }

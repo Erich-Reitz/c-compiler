@@ -71,6 +71,7 @@ auto translate(const std::unique_ptr<st::PrimaryExpression>& expr, Ctx& ctx)
         {st::AdditiveExpressionType::ADD, ast::BinOpKind::Add},
         {st::AdditiveExpressionType::SUB, ast::BinOpKind::Sub},
         {st::AdditiveExpressionType::EQ, ast::BinOpKind::Eq},
+        {st::AdditiveExpressionType::NEQ, ast::BinOpKind::Neq},
         {st::AdditiveExpressionType::GT, ast::BinOpKind::Gt},
         {st::AdditiveExpressionType::LT, ast::BinOpKind::Lt},
     };

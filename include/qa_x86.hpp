@@ -160,6 +160,10 @@ struct SetGAl {
     Register dst;
 };
 
+struct SetNeAl {
+    Register dst;
+};
+
 struct Label {
     std::string name;
 };
@@ -196,7 +200,7 @@ using Instruction =
     std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,
                  AddMI, SubMI, Cmp, CmpI, SetEAl, SetGAl, Label, JumpEq, Call,
                  Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
-                 JumpLess>;
+                 JumpLess, SetNeAl>;
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);
 std::optional<int> get_dest_virtual_id_if_present(const Instruction& ins);

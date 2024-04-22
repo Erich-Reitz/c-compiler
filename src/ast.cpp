@@ -12,7 +12,8 @@ namespace ast {
 }
 
 [[nodiscard]] auto is_comparison(BinOpKind kind) -> bool {
-    return kind == BinOpKind::Eq || kind == BinOpKind::Gt;
+    return kind == BinOpKind::Eq || kind == BinOpKind::Gt ||
+           kind == BinOpKind::Lt || kind == BinOpKind::Neq;
 }
 
 std::unique_ptr<Node> makeConstInt(int value) {
@@ -116,18 +117,6 @@ std::unique_ptr<Node> makeNewBinOp(std::unique_ptr<ast::Node> lhs,
                                    BinOpKind kind) {
     auto node = std::make_unique<Node>();
     node->type = NodeType::BinOp;
-    // if (lhs->type == NodeType::ConstInt && rhs->type == NodeType::ConstInt) {
-    //     switch (kind) {
-    //     case BinOpKind::Add:
-    //         return makeConstInt(lhs->value + rhs->value);
-    //     case BinOpKind::Sub:
-    //         return makeConstInt(lhs->value - rhs->value);
-    //     case BinOpKind::Eq:
-    //         return makeConstInt(lhs->value == rhs->value);
-    //     default:
-    //         throw std::runtime_error("Unknown BinOpKind");
-    //     }
-    // }
     node->lhs = std::move(lhs);
     node->rhs = std::move(rhs);
     node->binOpKind = kind;

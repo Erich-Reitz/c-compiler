@@ -127,8 +127,33 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
         SUCCEED();                                                          \
     }
 
+/** Basic **/
 RUN_TEST_CASE(IntReturnValue, "int_return.c");
+RUN_TEST_CASE(IntAssignment, "int_assignment.c");
+
+/** For loop test cases  **/
 RUN_TEST_CASE(ForLoopIncrement, "for_loop_increment.c");
+RUN_TEST_CASE(ForLoopDecrement, "for_loop_decrement.c");
+
+/** Int* pointers  **/
+RUN_TEST_CASE(IntSwap, "int_swap.c");
+
+/** Comparision operators  **/
+RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
+RUN_TEST_CASE(IntEqualityEq_PositiveCase, "int_equality_eq_positive.c");
+
+RUN_TEST_CASE(IntEqualityNeq_NegativeCase, "int_equality_neq_negative.c");
+RUN_TEST_CASE(IntEqualityNeq_PositiveCase, "int_equality_neq_positive.c");
+
+RUN_TEST_CASE(IntGreaterThan_And_IfStatements, "int_gt_if_statements.c");
+
+RUN_TEST_CASE(IntSubtractionInvolvingNegatives,
+              "int_subtraction_involving_negative.c");
+
+/** Parameter Passing  **/
+RUN_TEST_CASE(PassVariablesOnStack, "pass_vars_on_stack.c");
+RUN_TEST_CASE(PassVariablesOnStackMoreInvolved,
+              "pass_vars_on_stack_more_involved.c");
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
