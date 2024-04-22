@@ -1,5 +1,4 @@
 #!/bin/bash
 
-clang-format -n -Werror --dry-run src/*.cpp include/*.hpp
-
-clang-format -n -Werror --dry-run test_runner.cc
+clang-format-16 -n -Werror --dry-run src/*.cpp include/*.hpp
+clang-format-16 -n -Werror --dry-run test_runner.cc
