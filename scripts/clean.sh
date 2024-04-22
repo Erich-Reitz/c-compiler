@@ -1,5 +1,9 @@
 #!/bin/bash
 
-# Remove build directory
-rm -r build
-rm -r tmp
+if [ -d "build" ]; then
+    rm -r build
+fi
+
+if [ -d "tmp" ]; then
+    rm -r tmp
+fi
