@@ -9,8 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Include checks for compiler versions
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.2)
-        message(FATAL_ERROR "GCC version must be at least 13.2!")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.1)
+        message(FATAL_ERROR "GCC version must be at least 13.1!")
     endif()
 endif()
 
