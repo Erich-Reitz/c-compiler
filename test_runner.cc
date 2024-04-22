@@ -131,12 +131,16 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
 RUN_TEST_CASE(IntReturnValue, "int_return.c");
 RUN_TEST_CASE(IntAssignment, "int_assignment.c");
 
+/** Addition **/
+RUN_TEST_CASE(IntVariableAddition, "int_variable_addition.c");
+
 /** For loop test cases  **/
 RUN_TEST_CASE(ForLoopIncrement, "for_loop_increment.c");
 RUN_TEST_CASE(ForLoopDecrement, "for_loop_decrement.c");
 
 /** Int* pointers  **/
 RUN_TEST_CASE(IntSwap, "int_swap.c");
+RUN_TEST_CASE(IntDerefAddition, "int_deref_addition.c");
 
 /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
