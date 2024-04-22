@@ -14,38 +14,34 @@ template <typename T>
 concept ContainsTypeDeclaration = requires(T t) {
     {
         t.declarationSpecifiers
-    }
-    -> std::convertible_to<std::vector<st::DeclarationSpecifier>>;
-    {
-        t.GetDeclarator()
-    }
-    -> std::convertible_to<std::optional<st::Declarator>>;
+    } -> std::convertible_to<std::vector<st::DeclarationSpecifier>>;
+    { t.GetDeclarator() } -> std::convertible_to<std::optional<st::Declarator>>;
 };
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-[[nodiscard]] ast::DataType *
-toDataType(const std::vector<st::DeclarationSpecifier> &dss) {
+[[nodiscard]] ast::DataType* toDataType(
+    const std::vector<st::DeclarationSpecifier>& dss) {
     return new ast::DataType("int", 4, nullptr);
 }
 
 #pragma clang diagnostic pop
 
-[[nodiscard]] ast::DataType *toDataType(const st::Declarator &decl,
-                                        ast::DataType *pointsTo) {
+[[nodiscard]] ast::DataType* toDataType(const st::Declarator& decl,
+                                        ast::DataType* pointsTo) {
     auto ptr = decl.pointer;
-    if (!ptr)
-        return nullptr;
+    if (!ptr) return nullptr;
     auto levels = ptr.value().level;
-    ast::DataType *result = pointsTo;
+    ast::DataType* result = pointsTo;
     for (size_t i = 0; i < levels; i++) {
         result = new ast::DataType("pointer", 8, result);
     }
     return result;
 }
 
-template <ContainsTypeDeclaration T> ast::DataType *toDataType(const T &decl) {
+template <ContainsTypeDeclaration T>
+ast::DataType* toDataType(const T& decl) {
     auto datatype = toDataType(decl.declarationSpecifiers);
     std::optional<st::Declarator> opt_declarator = decl.GetDeclarator();
     if (!opt_declarator) {
@@ -57,4 +53,4 @@ template <ContainsTypeDeclaration T> ast::DataType *toDataType(const T &decl) {
     }
     return datatype;
 }
-} // namespace asttraits
+}  // namespace asttraits

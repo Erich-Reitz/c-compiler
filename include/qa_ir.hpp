@@ -20,8 +20,7 @@ struct Temp {
     int size;
 };
 
-using Value =
-    std::variant<Temp, target::HardcodedRegister, Variable, int>;
+using Value = std::variant<Temp, target::HardcodedRegister, Variable, int>;
 
 struct Label {
     std::string name;
@@ -112,7 +111,7 @@ struct Call {
     Value dst;
 };
 
-std::ostream &operator<<(std::ostream &os, const Label &label);
+std::ostream& operator<<(std::ostream& os, const Label& label);
 
 struct LabelDef {
     Label label;
@@ -129,36 +128,40 @@ struct DefineStackPushed {
 };
 
 using Operation =
-    std::variant<Mov, Ret, Add, Sub, MovR,Addr, DefineStackPushed, Deref, Compare, Jump,
-    Equal, ConditionalJumpEqual,ConditionalJumpGreater, LabelDef, Call, DerefStore, GreaterThan, ConditionalJumpLess>;
+    std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref,
+                 Compare, Jump, Equal, ConditionalJumpEqual,
+                 ConditionalJumpGreater, LabelDef, Call, DerefStore,
+                 GreaterThan, ConditionalJumpLess>;
 
-using CondJ =
-    std::variant<ConditionalJumpEqual, ConditionalJumpGreater>;
+using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater>;
 
-Label get_true_label(const CondJ &condj);
-Label get_false_label(const CondJ &condj);
+Label get_true_label(const CondJ& condj);
+Label get_false_label(const CondJ& condj);
 
-std::ostream &operator<<(std::ostream &os, const Operation &ins);
+std::ostream& operator<<(std::ostream& os, const Operation& ins);
 
-template<typename T>
+template <typename T>
 concept Integral = std::is_integral<T>::value;
 
-template<typename T>
+template <typename T>
 concept IsRegister = std::is_same<T, target::HardcodedRegister>::value ||
                      std::is_same<T, target::VirtualRegister>::value;
 
-template<typename T>
-concept IsIRLocation = std::is_same<T, qa_ir::Temp>::value || std::is_same<T, qa_ir::Variable>::value;
+template <typename T>
+concept IsIRLocation = std::is_same<T, qa_ir::Temp>::value ||
+                       std::is_same<T, qa_ir::Variable>::value;
 
-bool operator<(const Temp &lhs, const Temp &rhs);
-std::ostream &operator<<(std::ostream &os, const Temp &temp);
+bool operator<(const Temp& lhs, const Temp& rhs);
+std::ostream& operator<<(std::ostream& os, const Temp& temp);
 
-bool operator<(const target::HardcodedRegister &lhs, const target::HardcodedRegister &rhs);
-std::ostream &operator<<(std::ostream &os, const target::HardcodedRegister &reg);
+bool operator<(const target::HardcodedRegister& lhs,
+               const target::HardcodedRegister& rhs);
+std::ostream& operator<<(std::ostream& os,
+                         const target::HardcodedRegister& reg);
 
-std::ostream &operator<<(std::ostream &os, const Value &v);
+std::ostream& operator<<(std::ostream& os, const Value& v);
 
 [[nodiscard]] int SizeOf(Value v);
 [[nodiscard]] int SizeOfWhatItPointsTo(Value v);
 
-} // namespace qa_ir
+}  // namespace qa_ir

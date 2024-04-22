@@ -2,14 +2,13 @@
 
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
-#include <cassert>
-#include <map>
-#include <stdexcept>
 
 #include "ast.hpp"
 #include "qa_ir.hpp"
@@ -27,14 +26,14 @@ struct Ctx {
     int counter;
     int labelCounter;
     std::map<std::string, int> variableUsage;
-    std::map<std::string, const ast::Node *> variables;
+    std::map<std::string, const ast::Node*> variables;
 
     Temp newTemp(int size) {
         assert(size != 0);
         return Temp{counter++, size};
     }
 
-    Value AddVariable(const ast::Node *node) {
+    Value AddVariable(const ast::Node* node) {
         auto name = node->variableName;
         variableUsage[name]++;
         variables[name] = node;
@@ -42,7 +41,7 @@ struct Ctx {
         return Variable{name, variableUsage[name], size};
     }
 
-    Value getVariable(const std::string &name) {
+    Value getVariable(const std::string& name) {
         return Variable{name, variableUsage[name],
                         variables[name]->variableType.size};
     }
@@ -54,10 +53,11 @@ struct Ctx {
     }
 };
 
-CondJ GenerateConditionalIR(std::vector<Operation> &ins,
-                            const std::unique_ptr<ast::Node> &condition, Ctx &ctx) ;
+CondJ GenerateConditionalIR(std::vector<Operation>& ins,
+                            const std::unique_ptr<ast::Node>& condition,
+                            Ctx& ctx);
 
-[[nodiscard]] std::vector<Frame>
-Produce_IR(const std::vector<std::unique_ptr<ast::Node>> &nodes);
+[[nodiscard]] std::vector<Frame> Produce_IR(
+    const std::vector<std::unique_ptr<ast::Node>>& nodes);
 
-} // namespace qa_ir
+}  // namespace qa_ir

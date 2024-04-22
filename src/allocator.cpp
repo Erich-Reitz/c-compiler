@@ -1,20 +1,21 @@
+#include "../include/allocator.hpp"
+
 #include <concepts>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <ranges>
 
-#include "allocator.hpp"
-#include "qa_x86.hpp"
+#include "../include/qa_x86.hpp"
 
 namespace target {
 
 struct AllocatorContext {
-  public:
+   public:
     std::set<size_t> usedRegs = {};
     std::map<Register, BaseRegister> mapping = {};
 
@@ -40,15 +41,13 @@ struct AllocatorContext {
     }
 };
 
-auto getFirstUse(const Frame &frame) -> FirstLastUse {
+auto getFirstUse(const Frame& frame) -> FirstLastUse {
     std::map<int, int> firstUse = {};
     std::map<int, int> lastUse = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
         const auto srcId = get_src_virtual_id_if_present(instruction);
         const auto dstId = get_dest_virtual_id_if_present(instruction);
-        for (const auto register_id : {
-                    srcId, dstId
-                }) {
+        for (const auto register_id : {srcId, dstId}) {
             if (register_id.has_value()) {
                 if (firstUse.find(register_id.value()) == firstUse.end()) {
                     firstUse[register_id.value()] = idx;
@@ -60,7 +59,7 @@ auto getFirstUse(const Frame &frame) -> FirstLastUse {
     return {firstUse, lastUse};
 }
 
-auto remap(Frame &frame) -> std::map<VirtualRegister, VirtualRegister> {
+auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
     std::map<VirtualRegister, VirtualRegister> remappedRegisters = {};
     std::map<VirtualRegister, int> newFirstUsed = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
@@ -75,15 +74,16 @@ auto remap(Frame &frame) -> std::map<VirtualRegister, VirtualRegister> {
         const auto register_dest = get_dest_register(instruction);
         if (register_dest.has_value()) {
             const auto dest = *register_dest;
-            if (! std::holds_alternative<Mov>(instruction) ) {
+            if (!std::holds_alternative<Mov>(instruction)) {
                 continue;
             }
-            // if not found in newFirstused, (ie first used as a dest) then we need to
-            // remap
+            // if not found in newFirstused, (ie first used as a dest) then we
+            // need to remap
             if (newFirstUsed.find(dest) == newFirstUsed.end()) {
                 if (src.has_value()) {
                     // if src is in remapped registers, then we need to remap it
-                    if (remappedRegisters.find(*src) != remappedRegisters.end()) {
+                    if (remappedRegisters.find(*src) !=
+                        remappedRegisters.end()) {
                         remappedRegisters[dest] = remappedRegisters[*src];
                     } else {
                         remappedRegisters[dest] = *src;
@@ -95,11 +95,11 @@ auto remap(Frame &frame) -> std::map<VirtualRegister, VirtualRegister> {
     return remappedRegisters;
 }
 
-[[nodiscard]] Frame rewrite(const Frame &frame, AllocatorContext &ctx) {
+[[nodiscard]] Frame rewrite(const Frame& frame, AllocatorContext& ctx) {
     Frame newFrame = frame;
     auto [firstUse, lastUse] = getFirstUse(frame);
     auto remappedRegisters = remap(newFrame);
-    for (const auto &entry : remappedRegisters) {
+    for (const auto& entry : remappedRegisters) {
         const auto prev = entry.first;
         const auto newReg = entry.second;
         firstUse[newReg.id] = std::min(firstUse[newReg.id], firstUse[prev.id]);
@@ -108,13 +108,15 @@ auto remap(Frame &frame) -> std::map<VirtualRegister, VirtualRegister> {
     std::vector<Instruction> newInstructions = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
         auto operation = instruction;
-        auto process_register = [&ctx, &remappedRegisters, &firstUse, &lastUse,
-        &idx](VirtualRegister &reg) -> HardcodedRegister {
+        auto process_register =
+            [&ctx, &remappedRegisters, &firstUse, &lastUse,
+             &idx](VirtualRegister& reg) -> HardcodedRegister {
             if (remappedRegisters.find(reg) != remappedRegisters.end()) {
                 reg = remappedRegisters[reg];
             }
 
-            if (ctx.mapping.find(reg) == ctx.mapping.end() || firstUse[reg.id] == idx) {
+            if (ctx.mapping.find(reg) == ctx.mapping.end() ||
+                firstUse[reg.id] == idx) {
                 ctx.mapping[reg] = ctx.getReg();
             }
 
@@ -140,13 +142,12 @@ auto remap(Frame &frame) -> std::map<VirtualRegister, VirtualRegister> {
     return newFrame;
 }
 
-[[nodiscard]] std::vector<Frame>
-rewrite(const std::vector<Frame> &frames) {
+[[nodiscard]] std::vector<Frame> rewrite(const std::vector<Frame>& frames) {
     std::vector<Frame> newFrames;
-    for (const auto &frame : frames) {
+    for (const auto& frame : frames) {
         AllocatorContext ctx;
         newFrames.push_back(rewrite(frame, ctx));
     }
     return newFrames;
 }
-} // namespace allocator
+}  // namespace target

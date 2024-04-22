@@ -1,24 +1,20 @@
-#include <iostream>
+#include "../include/codegen.hpp"
 
-#include "codegen.hpp"
+#include <iostream>
 
 namespace codegen {
 class Ctx {
-  public:
+   public:
     std::string Code;
 
-    void AddInstructionNoIndent(const std::string &i) {
-        Code += (i + "\n");
-    }
+    void AddInstructionNoIndent(const std::string& i) { Code += (i + "\n"); }
 
-    void AddInstruction(const std::string &i) {
-        Code += "\t" + i + "\n";
-    }
+    void AddInstruction(const std::string& i) { Code += "\t" + i + "\n"; }
 };
 
-void MoveInstruction(const target::Mov mov, Ctx &ctx) {
+void MoveInstruction(const target::Mov mov, Ctx& ctx) {
     if (std::get<target::HardcodedRegister>(mov.dst) ==
-            std::get<target::HardcodedRegister>(mov.src))
+        std::get<target::HardcodedRegister>(mov.src))
         return;
     ctx.AddInstruction("mov " + target::to_asm(mov));
 }
@@ -30,7 +26,7 @@ std::string to_asm(target::StackLocation sl) {
     return " [rbp + " + std::to_string(-sl.offset) + "]";
 }
 
-void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
+void generateASMForInstruction(const target::Instruction& is, Ctx& ctx) {
     // std::cout << "codegen for " << is << std::endl;
     if (std::holds_alternative<target::Mov>(is)) {
         MoveInstruction(std::get<target::Mov>(is), ctx);
@@ -45,15 +41,15 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
     } else if (std::holds_alternative<target::StoreI>(is)) {
         const auto storeI = std::get<target::StoreI>(is);
         const auto sourcesizeString = std::string("dword");
-        ctx.AddInstruction("mov " + sourcesizeString + to_asm(storeI.dst) + ", " +
-                           std::to_string(storeI.value));
+        ctx.AddInstruction("mov " + sourcesizeString + to_asm(storeI.dst) +
+                           ", " + std::to_string(storeI.value));
     } else if (std::holds_alternative<target::Store>(is)) {
         const auto store = std::get<target::Store>(is);
         const auto src = std::get<target::HardcodedRegister>(store.src);
         const auto sourcesizeString =
             src.size == 4 ? std::string("dword") : std::string("qword");
-        ctx.AddInstruction("mov " + sourcesizeString + to_asm(store.dst) + ", " +
-                           target::to_asm(src.reg, src.size));
+        ctx.AddInstruction("mov " + sourcesizeString + to_asm(store.dst) +
+                           ", " + target::to_asm(src.reg, src.size));
     } else if (std::holds_alternative<target::Load>(is)) {
         const auto load = std::get<target::Load>(is);
         const auto dst = std::get<target::HardcodedRegister>(load.dst);
@@ -98,7 +94,8 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         const auto SetEAl = std::get<target::SetEAl>(is);
         ctx.AddInstruction("sete al");
         const auto dst = std::get<target::HardcodedRegister>(SetEAl.dst);
-        ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) + ", al");
+        ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) +
+                           ", al");
     } else if (std::holds_alternative<target::JumpEq>(is)) {
         const auto jump = std::get<target::JumpEq>(is);
         ctx.AddInstruction("je ." + jump.label);
@@ -112,8 +109,8 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         const auto lea = std::get<target::Lea>(is);
         const auto dst = std::get<target::HardcodedRegister>(lea.dst);
         const auto dstsize = dst.size;
-        ctx.AddInstruction("lea " + target::to_asm(dst.reg, dstsize) + ", [rbp - " +
-                           std::to_string(lea.src.offset) + "]");
+        ctx.AddInstruction("lea " + target::to_asm(dst.reg, dstsize) +
+                           ", [rbp - " + std::to_string(lea.src.offset) + "]");
     } else if (std::holds_alternative<target::IndirectLoad>(is)) {
         const auto imao = std::get<target::IndirectLoad>(is);
         const auto dst = std::get<target::HardcodedRegister>(imao.dst);
@@ -137,7 +134,8 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         const auto SetGAl = std::get<target::SetGAl>(is);
         ctx.AddInstruction("setg al");
         const auto dst = std::get<target::HardcodedRegister>(SetGAl.dst);
-        ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) + ", al");
+        ctx.AddInstruction("movzx " + target::to_asm(dst.reg, dst.size) +
+                           ", al");
     } else if (std::holds_alternative<target::PushI>(is)) {
         const auto pushI = std::get<target::PushI>(is);
         ctx.AddInstruction("push " + std::to_string(pushI.src));
@@ -152,7 +150,7 @@ void generateASMForInstruction(const target::Instruction &is, Ctx &ctx) {
         const auto sourceSizeString = std::string("dword");
         ctx.AddInstruction("add " + sourceSizeString + to_asm(dst) + ", " +
                            std::to_string(v));
-    }  else if (std::holds_alternative<target::SubMI>(is)) {
+    } else if (std::holds_alternative<target::SubMI>(is)) {
         const auto subMI = std::get<target::SubMI>(is);
         const target::StackLocation dst = subMI.dst;
         const auto v = subMI.value;
@@ -172,16 +170,16 @@ int sixteenByteAlign(int size) {
     return size % 16 == 0 ? size : size + (16 - (size % 16));
 }
 
-void generateASMForFrame(const target::Frame &frame, Ctx &ctx) {
+void generateASMForFrame(const target::Frame& frame, Ctx& ctx) {
     ctx.AddInstructionNoIndent(frame.name + ":");
     ctx.AddInstruction("push rbp");
     ctx.AddInstruction("mov rbp, rsp");
     ctx.AddInstruction("sub rsp, " +
                        std::to_string(sixteenByteAlign(frame.size)));
-    for (const auto &is : frame.instructions) {
+    for (const auto& is : frame.instructions) {
         try {
             generateASMForInstruction(is, ctx);
-        } catch (const std::exception &e) {
+        } catch (const std::exception& e) {
             std::cerr << "Error generating ASM for operation: " << e.what()
                       << std::endl;
             throw;
@@ -196,11 +194,11 @@ void generateASMForFrame(const target::Frame &frame, Ctx &ctx) {
     ctx.AddInstruction("ret");
 }
 
-[[nodiscard]] std::string Generate(const std::vector<target::Frame> &frames) {
+[[nodiscard]] std::string Generate(const std::vector<target::Frame>& frames) {
     Ctx ctx;
     ctx.AddInstructionNoIndent("section .text");
     ctx.AddInstructionNoIndent("global _start");
-    for (const auto &frame : frames) {
+    for (const auto& frame : frames) {
         generateASMForFrame(frame, ctx);
     }
     ctx.AddInstructionNoIndent("_start:");
@@ -210,4 +208,4 @@ void generateASMForFrame(const target::Frame &frame, Ctx &ctx) {
     ctx.AddInstruction("syscall");
     return ctx.Code;
 }
-} // namespace codegen
+}  // namespace codegen

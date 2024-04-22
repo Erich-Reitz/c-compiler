@@ -1,9 +1,9 @@
+#include "../include/ast.hpp"
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "ast.hpp"
 
 namespace ast {
 
@@ -22,9 +22,9 @@ std::unique_ptr<Node> makeConstInt(int value) {
     return node;
 }
 
-std::unique_ptr<Node> makeNewFunction(std::string functionName,
-                                      std::vector<std::unique_ptr<ast::Node>> body,
-                                      std::vector<FrameParam> params) {
+std::unique_ptr<Node> makeNewFunction(
+    std::string functionName, std::vector<std::unique_ptr<ast::Node>> body,
+    std::vector<FrameParam> params) {
     auto node = std::make_unique<Node>();
     node->type = NodeType::Frame;
     node->functionName = functionName;
@@ -64,10 +64,11 @@ std::unique_ptr<Node> makeNewMove(std::unique_ptr<ast::Node> left,
     return node;
 }
 
-std::unique_ptr<Node> makeNewForLoop(std::unique_ptr<ast::Node> init,
-                                     std::optional<std::unique_ptr<ast::Node>> condition,
-                                     std::optional<std::unique_ptr<ast::Node>> update,
-                                     std::vector<std::unique_ptr<ast::Node>> body) {
+std::unique_ptr<Node> makeNewForLoop(
+    std::unique_ptr<ast::Node> init,
+    std::optional<std::unique_ptr<ast::Node>> condition,
+    std::optional<std::unique_ptr<ast::Node>> update,
+    std::vector<std::unique_ptr<ast::Node>> body) {
     auto node = std::make_unique<Node>();
     node->type = NodeType::ForLoop;
     node->forInit = std::move(init);
@@ -91,7 +92,8 @@ std::unique_ptr<Node> makeNewMemRead(std::unique_ptr<ast::Node> expr) {
     node->derefDepth = 1;
     if (node->expr->type == NodeType::Addr) {
         node->type = node->expr->expr->type;
-        // hack to copy, assumes that it is a variable. works now for nested stuff
+        // hack to copy, assumes that it is a variable. works now for nested
+        // stuff
         node->variableName = node->expr->expr->variableName;
     }
     if (node->expr->type == NodeType::Deref) {
@@ -132,9 +134,10 @@ std::unique_ptr<Node> makeNewBinOp(std::unique_ptr<ast::Node> lhs,
     return node;
 }
 
-std::unique_ptr<Node> makeNewIfStmt(std::unique_ptr<ast::Node> condition,
-                                    std::vector<std::unique_ptr<ast::Node>> then,
-                                    std::vector<std::unique_ptr<ast::Node>> else_) {
+std::unique_ptr<Node> makeNewIfStmt(
+    std::unique_ptr<ast::Node> condition,
+    std::vector<std::unique_ptr<ast::Node>> then,
+    std::vector<std::unique_ptr<ast::Node>> else_) {
     auto node = std::make_unique<Node>();
     node->type = NodeType::If;
     node->condition = std::move(condition);
@@ -143,7 +146,8 @@ std::unique_ptr<Node> makeNewIfStmt(std::unique_ptr<ast::Node> condition,
     return node;
 }
 
-std::unique_ptr<Node> makeNewCall(std::string name, std::vector<std::unique_ptr<ast::Node>> args) {
+std::unique_ptr<Node> makeNewCall(
+    std::string name, std::vector<std::unique_ptr<ast::Node>> args) {
     auto node = std::make_unique<Node>();
     node->type = NodeType::Call;
     node->callName = name;
@@ -153,4 +157,4 @@ std::unique_ptr<Node> makeNewCall(std::string name, std::vector<std::unique_ptr<
     return node;
 }
 
-} // namespace ast
+}  // namespace ast

@@ -3,16 +3,16 @@
 #include <sstream>
 #include <string>
 
-#include "allocator.hpp"
-#include "assem.hpp"
-#include "codegen.hpp"
-#include "lexer.hpp"
-#include "lower_ir.hpp"
-#include "parser.hpp"
-#include "st.hpp"
-#include "translate.hpp"
+#include "../include/allocator.hpp"
+#include "../include/assem.hpp"
+#include "../include/codegen.hpp"
+#include "../include/lexer.hpp"
+#include "../include/lower_ir.hpp"
+#include "../include/parser.hpp"
+#include "../include/st.hpp"
+#include "../include/translate.hpp"
 
-[[nodiscard]] const std::string readfile(const char *sourcefile) {
+[[nodiscard]] const std::string readfile(const char* sourcefile) {
     std::ifstream inFile;
     inFile.open(sourcefile);
     std::stringstream strStream;
@@ -20,52 +20,52 @@
     return strStream.str();
 }
 
-void print_syntax_tree(const st::Program &st) {
+void print_syntax_tree(const st::Program& st) {
     std::cout << "-----------------" << std::endl;
     std::cout << "Syntax Tree:" << std::endl;
-    for (const auto &node : st.nodes) {
+    for (const auto& node : st.nodes) {
         std::cout << node << std::endl;
     }
     std::cout << "-----------------" << std::endl;
 }
 
-void print_ast(const std::vector<std::unique_ptr<ast::Node>> &ast) {
+void print_ast(const std::vector<std::unique_ptr<ast::Node>>& ast) {
     std::cout << "-----------------" << std::endl;
     std::cout << "AST:" << std::endl;
-    for (const auto &node : ast) {
+    for (const auto& node : ast) {
         std::cout << *node << std::endl;
     }
     std::cout << "-----------------" << std::endl;
 }
 
-void print_ir(const std::vector<qa_ir::Frame> &frames) {
+void print_ir(const std::vector<qa_ir::Frame>& frames) {
     std::cout << "-----------------" << std::endl;
     std::cout << "IR:" << std::endl;
-    for (const auto &frame : frames) {
-        for (const auto &ins : frame.instructions) {
+    for (const auto& frame : frames) {
+        for (const auto& ins : frame.instructions) {
             std::cout << ins << std::endl;
         }
     }
     std::cout << "-----------------" << std::endl;
 }
 
-void print_lower_ir(const std::vector<target::Frame> &frames) {
-    for (const auto &frame : frames) {
-        for (const auto &ins : frame.instructions) {
+void print_lower_ir(const std::vector<target::Frame>& frames) {
+    for (const auto& frame : frames) {
+        for (const auto& ins : frame.instructions) {
             std::cout << ins << std::endl;
         }
     }
     std::cout << "-----------------" << std::endl;
 }
 
-void write_to_file(const std::string &code) {
+void write_to_file(const std::string& code) {
     std::ofstream outFile;
     outFile.open("test.asm");
     outFile << code;
     outFile.close();
 }
 
-int runfile(const char *sourcefile) {
+int runfile(const char* sourcefile) {
     const auto contents = readfile(sourcefile);
     const auto tokens = lexer::lex(contents);
     const auto st = parse(tokens);

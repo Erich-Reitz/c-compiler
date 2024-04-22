@@ -3,3 +3,4 @@
 obj/
 ac
 test.c
+build/

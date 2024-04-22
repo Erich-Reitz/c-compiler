@@ -30,19 +30,17 @@ enum class BaseRegister {
     R15
 };
 
-std::ostream &operator<<(std::ostream &os, BaseRegister reg);
+std::ostream& operator<<(std::ostream& os, BaseRegister reg);
 
 // six system V calling convention registers
 inline const std::vector<BaseRegister> param_regs = {
     BaseRegister::DI, BaseRegister::SI, BaseRegister::DX,
-    BaseRegister::CX, BaseRegister::R8, BaseRegister::R9
-};
+    BaseRegister::CX, BaseRegister::R8, BaseRegister::R9};
 // general purpose registers
 // these are disjoint from the param_regs, so that calls don't clobber them
 inline const std::vector<BaseRegister> general_regs = {
     BaseRegister::AX,  BaseRegister::BX,  BaseRegister::R10, BaseRegister::R11,
-    BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15
-};
+    BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15};
 
 [[nodiscard]] std::string to_asm(BaseRegister reg, int size);
 
@@ -51,13 +49,13 @@ struct HardcodedRegister {
     int size;
 };
 
-bool operator==(const HardcodedRegister &lhs, const HardcodedRegister &rhs);
+bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
 struct StackLocation {
     int offset;
 };
 
-std::ostream &operator<<(std::ostream &os, const StackLocation &loc);
+std::ostream& operator<<(std::ostream& os, const StackLocation& loc);
 
 struct VirtualRegister {
     int id;
@@ -65,16 +63,16 @@ struct VirtualRegister {
 };
 using Register = std::variant<HardcodedRegister, VirtualRegister>;
 // comparison operators for registers
-bool operator<(const Register &lhs, const Register &rhs);
+bool operator<(const Register& lhs, const Register& rhs);
 
 using Location = std::variant<Register, StackLocation>;
-int SizeOf(const Location &loc);
+int SizeOf(const Location& loc);
 struct Mov {
     Register dst;
     Register src;
 };
 
-[[nodiscard]] std::string to_asm(const Mov &mov);
+[[nodiscard]] std::string to_asm(const Mov& mov);
 
 struct LoadI {
     Register dst;
@@ -188,40 +186,35 @@ struct IndirectStore {
 
 struct PushI {
     int src;
-} ;
+};
 
 struct Push {
     Register src;
 };
 
 using Instruction =
-    std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, AddMI, SubMI,
-    Cmp, CmpI, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-    IndirectStore, PushI, Push, JumpLess>;
+    std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,
+                 AddMI, SubMI, Cmp, CmpI, SetEAl, SetGAl, Label, JumpEq, Call,
+                 Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
+                 JumpLess>;
 
-std::optional<int> get_src_virtual_id_if_present(const Instruction &ins);
-std::optional<int> get_dest_virtual_id_if_present(const Instruction &ins);
-std::optional<VirtualRegister> get_src_register(const Instruction &ins);
-std::optional<VirtualRegister> get_dest_register(const Instruction &ins);
-void set_src_register(Instruction &ins, Register reg);
-void set_dest_register(Instruction &ins, Register reg);
+std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);
+std::optional<int> get_dest_virtual_id_if_present(const Instruction& ins);
+std::optional<VirtualRegister> get_src_register(const Instruction& ins);
+std::optional<VirtualRegister> get_dest_register(const Instruction& ins);
+void set_src_register(Instruction& ins, Register reg);
+void set_dest_register(Instruction& ins, Register reg);
 
-std::ostream &operator<<(std::ostream &os, const Instruction &ins);
+std::ostream& operator<<(std::ostream& os, const Instruction& ins);
 
 template <typename T>
 concept HasRegisterSrc = requires(T t) {
-    {
-        t.src
-    }
-    -> std::convertible_to<Register>;
+    { t.src } -> std::convertible_to<Register>;
 };
 
 template <typename T>
 concept HasRegisterDest = requires(T t) {
-    {
-        t.dst
-    }
-    -> std::convertible_to<Register>;
+    { t.dst } -> std::convertible_to<Register>;
 };
 
 struct Frame {
@@ -230,4 +223,4 @@ struct Frame {
     int size = 0;
 };
 
-} // namespace target
+}  // namespace target
