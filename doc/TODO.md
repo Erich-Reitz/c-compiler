@@ -1,5 +1,7 @@
 ### TODO
-- [ ] Refactor `ast.hpp` and `translate.cpp`
+- [x] Refactor `ast.hpp` and `translate.cpp`
+- [ ] Look into better ways to overload a function call on the type a variant holds
+- [ ] Handle variables outside of functions
 - [ ] Less than positive and negative test cases
 - [ ] Greater than positive and negative test cases
 - [ ] Implement <=
@@ -7,8 +9,13 @@
 - [ ] Implement prefix / postfix increment / decrement
 - [ ] Implement floats
 - [ ] Implement char
+- [ ] Handle return types of functions that aren't int
 - [ ] Implement arrays
 - [ ] Implement structs
 - [ ] Handle expressions in the first part of a for loop
     - [ ] Looks like `for(a; a < 5; a = a + 1)`
+- [ ] Abstract IR int type into a struct
+- [ ] Add a direct IR instruction for adding to a stack location
+- [ ] Add a direct IR instruction for subtracting from a stack location
+- [ ] Refactor data type for AST data types
 

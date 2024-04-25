@@ -20,9 +20,8 @@ static unsigned long line = 1;
 std::string source;
 
 const std::unordered_map<std::string, TokType> keywords = {
-    {"return", TokType::TOKEN_RETURN}, {"int", TokType::TOKEN_T_INT},
-    {"else", TokType::TOKEN_ELSE},     {"if", TokType::TOKEN_IF},
-    {"for", TokType::TOKEN_FOR},
+    {"return", TokType::TOKEN_RETURN}, {"int", TokType::TOKEN_T_INT}, {"else", TokType::TOKEN_ELSE},
+    {"if", TokType::TOKEN_IF},         {"for", TokType::TOKEN_FOR},
 };
 
 auto isAtEnd() -> bool { return current >= source.size(); }
@@ -114,8 +113,7 @@ auto peek() -> char {
                     advance();
                     while (isdigit(peek())) advance();
                 }
-                return Token{TokType::TOKEN_NUMBER,
-                             source.substr(start, current - start)};
+                return Token{TokType::TOKEN_NUMBER, source.substr(start, current - start)};
             } else if (isalpha(c)) {
                 while (isalnum(peek()) || peek() == '_') {
                     advance();
@@ -127,8 +125,7 @@ auto peek() -> char {
                 }
                 return Token{TokType::TOKEN_IDENTIFIER, text};
             } else {
-                fprintf(stderr, "Unexpected character '%d' on line %zu\n", c,
-                        line);
+                fprintf(stderr, "Unexpected character '%d' on line %zu\n", c, line);
                 exit(EXIT_FAILURE);
             }
     }

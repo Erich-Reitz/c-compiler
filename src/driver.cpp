@@ -31,11 +31,11 @@ void print_syntax_tree(const st::Program& st) {
     std::cout << "-----------------" << std::endl;
 }
 
-void print_ast(const std::vector<std::unique_ptr<ast::Node>>& ast) {
+void print_ast(const std::vector<ast::TopLevelNode>& ast) {
     std::cout << "-----------------" << std::endl;
     std::cout << "AST:" << std::endl;
     for (const auto& node : ast) {
-        std::cout << *node << std::endl;
+        std::cout << node.toString() << std::endl;
     }
     std::cout << "-----------------" << std::endl;
 }
@@ -51,8 +51,7 @@ void print_ir(const std::vector<qa_ir::Frame>& frames) {
     std::cout << "-----------------" << std::endl;
 }
 
-void print_lower_ir(const std::vector<target::Frame>& frames,
-                    const std::string& header) {
+void print_lower_ir(const std::vector<target::Frame>& frames, const std::string& header) {
     std::cout << "-----------------" << std::endl;
     std::cout << header << std::endl;
     for (const auto& frame : frames) {
@@ -77,7 +76,7 @@ int runfile(const char* sourcefile, const std::string& outfile) {
 
     if (DEBUG) print_syntax_tree(st);
 
-    const auto ast = translate(st);
+    auto ast = ast::translate(st);
 
     if (DEBUG) print_ast(ast);
 

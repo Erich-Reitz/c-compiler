@@ -12,24 +12,15 @@ namespace asttraits {
 
 template <typename T>
 concept ContainsTypeDeclaration = requires(T t) {
-    {
-        t.declarationSpecifiers
-    } -> std::convertible_to<std::vector<st::DeclarationSpecifier>>;
+    { t.declarationSpecifiers } -> std::convertible_to<std::vector<st::DeclarationSpecifier>>;
     { t.GetDeclarator() } -> std::convertible_to<std::optional<st::Declarator>>;
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-
-[[nodiscard]] ast::DataType* toDataType(
-    const std::vector<st::DeclarationSpecifier>& dss) {
+[[nodiscard]] ast::DataType* toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
     return new ast::DataType("int", 4, nullptr);
 }
 
-#pragma clang diagnostic pop
-
-[[nodiscard]] ast::DataType* toDataType(const st::Declarator& decl,
-                                        ast::DataType* pointsTo) {
+[[nodiscard]] ast::DataType* toDataType(const st::Declarator& decl, ast::DataType* pointsTo) {
     auto ptr = decl.pointer;
     if (!ptr) return nullptr;
     auto levels = ptr.value().level;

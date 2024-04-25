@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include "assem.hpp"
+#include "qa_x86.hpp"
 
 namespace target {
 
@@ -20,8 +20,6 @@ struct FirstLastUse {
 };
 
 [[nodiscard]] auto getFirstUse(const Frame& frame) -> FirstLastUse;
-[[nodiscard]] auto remap(Frame& frame)
-    -> std::map<VirtualRegister, VirtualRegister>;
-[[nodiscard]] auto rewrite(const std::vector<Frame>& frames)
-    -> std::vector<Frame>;
+[[nodiscard]] auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister>;
+[[nodiscard]] auto rewrite(const std::vector<Frame>& frames) -> std::vector<Frame>;
 }  // namespace target

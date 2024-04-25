@@ -2,9 +2,7 @@
 
 #include <set>
 
-auto isTypeSpecifier(const Token token) -> bool {
-    return token.type == TokType::TOKEN_T_INT;
-}
+auto isTypeSpecifier(const Token token) -> bool { return token.type == TokType::TOKEN_T_INT; }
 
 auto isStmtBegin(const Token t) -> bool {
     std::set<TokType> stmtBeginSet = {
@@ -14,14 +12,13 @@ auto isStmtBegin(const Token t) -> bool {
     return stmtBeginSet.find(t.type) != stmtBeginSet.end();
 }
 
-auto isFuncBegin(const Token first, const Token second, const Token third)
-    -> bool {
+auto isFuncBegin(const Token first, const Token second, const Token third) -> bool {
     return isTypeSpecifier(first) && second.type == TokType::TOKEN_IDENTIFIER &&
            third.type == TokType::TOKEN_LEFT_PAREN;
 }
 
-auto __EqualsSignLookahead(const unsigned long current,
-                           const std::vector<Token>& g_tokens) -> bool {
+auto __EqualsSignLookahead(const unsigned long current, const std::vector<Token>& g_tokens)
+    -> bool {
     unsigned long i = current;
     while (i < g_tokens.size()) {
         if (g_tokens[i].type == TokType::TOKEN_EQUAL) {

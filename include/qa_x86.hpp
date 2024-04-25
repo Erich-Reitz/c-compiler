@@ -13,29 +13,21 @@ const int address_size = 8;
 
 // all registers used.
 // x86-64 registers
-enum class BaseRegister {
-    AX,
-    BX,
-    CX,
-    DX,
-    SI,
-    DI,
-    R8,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15
+enum class BaseRegister { AX, BX, CX, DX, SI, DI, R8, R9, R10, R11, R12, R13, R14, R15 };
+
+struct HardcodedRegister {
+    BaseRegister reg;
+    int size;
 };
+
+[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister;
 
 std::ostream& operator<<(std::ostream& os, BaseRegister reg);
 
 // six system V calling convention registers
-inline const std::vector<BaseRegister> param_regs = {
-    BaseRegister::DI, BaseRegister::SI, BaseRegister::DX,
-    BaseRegister::CX, BaseRegister::R8, BaseRegister::R9};
+inline const std::vector<BaseRegister> param_regs = {BaseRegister::DI, BaseRegister::SI,
+                                                     BaseRegister::DX, BaseRegister::CX,
+                                                     BaseRegister::R8, BaseRegister::R9};
 // general purpose registers
 // these are disjoint from the param_regs, so that calls don't clobber them
 inline const std::vector<BaseRegister> general_regs = {
@@ -43,11 +35,6 @@ inline const std::vector<BaseRegister> general_regs = {
     BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15};
 
 [[nodiscard]] std::string to_asm(BaseRegister reg, int size);
-
-struct HardcodedRegister {
-    BaseRegister reg;
-    int size;
-};
 
 bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
@@ -164,6 +151,10 @@ struct SetNeAl {
     Register dst;
 };
 
+struct SetLAl {
+    Register dst;
+};
+
 struct Label {
     std::string name;
 };
@@ -197,10 +188,9 @@ struct Push {
 };
 
 using Instruction =
-    std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,
-                 AddMI, SubMI, Cmp, CmpI, SetEAl, SetGAl, Label, JumpEq, Call,
-                 Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
-                 JumpLess, SetNeAl>;
+    std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, AddMI, SubMI, Cmp,
+                 CmpI, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
+                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl>;
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);
 std::optional<int> get_dest_virtual_id_if_present(const Instruction& ins);

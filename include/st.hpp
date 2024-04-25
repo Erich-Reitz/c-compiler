@@ -15,10 +15,10 @@ class UnaryExpression;
 class AdditiveExpression;
 class FunctionCallExpression;
 
-using Expression = std::variant<
-    std::unique_ptr<PrimaryExpression>, std::unique_ptr<AssignmentExpression>,
-    std::unique_ptr<UnaryExpression>, std::unique_ptr<AdditiveExpression>,
-    std::unique_ptr<FunctionCallExpression>>;
+using Expression =
+    std::variant<std::unique_ptr<PrimaryExpression>, std::unique_ptr<AssignmentExpression>,
+                 std::unique_ptr<UnaryExpression>, std::unique_ptr<AdditiveExpression>,
+                 std::unique_ptr<FunctionCallExpression>>;
 
 inline std::ostream& operator<<(std::ostream& os, const Expression& node);
 
@@ -29,9 +29,7 @@ class PrimaryExpression {
     PrimaryExpression(int p_value)
         : type(PrimaryExpressionType::INT), value(p_value), idenValue("") {}
     PrimaryExpression(std::string p_iden_value)
-        : type(PrimaryExpressionType::IDEN),
-          value(0),
-          idenValue(p_iden_value) {}
+        : type(PrimaryExpressionType::IDEN), value(0), idenValue(p_iden_value) {}
 
     std::ostream& print(std::ostream& os) {
         if (type == PrimaryExpressionType::INT) {
@@ -51,8 +49,7 @@ enum class AdditiveExpressionType { ADD, SUB, GT, EQ, NEQ, LT };
 
 class AdditiveExpression {
    public:
-    AdditiveExpression(Expression lhs, Expression rhs,
-                       AdditiveExpressionType type);
+    AdditiveExpression(Expression lhs, Expression rhs, AdditiveExpressionType type);
 
     std::ostream& print(std::ostream& os) {
         os << "AdditiveExpression(lhs=";
@@ -128,8 +125,7 @@ inline std::ostream& operator<<(std::ostream& os, const Expression& expr) {
 
 class FunctionCallExpression {
    public:
-    explicit FunctionCallExpression(std::string p_name,
-                                    std::vector<Expression> p_args);
+    explicit FunctionCallExpression(std::string p_name, std::vector<Expression> p_args);
 
     std::string name;
     std::vector<Expression> args;
@@ -156,13 +152,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pointer& node) {
     return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const PrimaryExpression& node) {
+inline std::ostream& operator<<(std::ostream& os, const PrimaryExpression& node) {
     if (node.type == PrimaryExpressionType::INT) {
         os << "PrimaryExpression(type=INT, value=" << node.value << ")";
     } else {
-        os << "PrimaryExpression(type=IDEN, idenValue=" << node.idenValue
-           << ")";
+        os << "PrimaryExpression(type=IDEN, idenValue=" << node.idenValue << ")";
     }
     return os;
 }
@@ -175,8 +169,7 @@ class TypeSpecifier {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TypeSpecifier& node) {
-    os << "TypeSpecifier(type=" << static_cast<int>(node.type)
-       << "iden=" << node.iden << ")";
+    os << "TypeSpecifier(type=" << static_cast<int>(node.type) << "iden=" << node.iden << ")";
     return os;
 }
 
@@ -185,8 +178,7 @@ class DeclarationSpecifier {
     TypeSpecifier typespecifier;
 };
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const DeclarationSpecifier& node) {
+inline std::ostream& operator<<(std::ostream& os, const DeclarationSpecifier& node) {
     os << node.typespecifier;
     return os;
 }
@@ -225,16 +217,14 @@ class DirectDeclarator {
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const DirectDeclarator& node) {
+inline std::ostream& operator<<(std::ostream& os, const DirectDeclarator& node) {
     if (std::holds_alternative<VariableDirectDeclarator>(node.declarator)) {
         os << "DirectDeclarator(kind=VARIABLE, declarator="
            << std::get<VariableDirectDeclarator>(node.declarator).name << ")";
         return os;
     }
     os << "DirectDeclarator(kind=FUNCTION, declarator="
-       << std::get<FunctionDirectDeclarator>(node.declarator).declarator.name
-       << ")";
+       << std::get<FunctionDirectDeclarator>(node.declarator).declarator.name << ")";
     return os;
 }
 
@@ -248,9 +238,7 @@ class ParameterDeclaration {
    public:
     [[nodiscard]] std::string Name() const {
         if (declarator.directDeclarator.kind == DeclaratorKind::VARIABLE) {
-            return std::get<VariableDirectDeclarator>(
-                       declarator.directDeclarator.declarator)
-                .name;
+            return std::get<VariableDirectDeclarator>(declarator.directDeclarator.declarator).name;
         }
         throw std::runtime_error("Not a variable");
     }
@@ -335,8 +323,7 @@ struct CompoundStatement;
 
 class SelectionStatement {
    public:
-    explicit SelectionStatement(Expression cond,
-                                std::unique_ptr<CompoundStatement> then,
+    explicit SelectionStatement(Expression cond, std::unique_ptr<CompoundStatement> then,
                                 std::unique_ptr<CompoundStatement> else_);
 
     std::ostream& print(std::ostream& os) const {
@@ -356,9 +343,8 @@ class SelectionStatement {
 };
 
 struct ForDeclaration {
-    explicit ForDeclaration(
-        std::vector<DeclarationSpecifier> p_declarationSpecifiers,
-        InitDeclarator p_initDeclarator)
+    explicit ForDeclaration(std::vector<DeclarationSpecifier> p_declarationSpecifiers,
+                            InitDeclarator p_initDeclarator)
         : declarationSpecifiers(std::move(p_declarationSpecifiers)),
           initDeclarator(std::move(p_initDeclarator)) {}
 
@@ -405,11 +391,10 @@ class ForStatement;
 
 class Statement {
    public:
-    explicit Statement(std::variant<std::unique_ptr<ExpressionStatement>,
-                                    std::unique_ptr<ReturnStatement>,
-                                    std::unique_ptr<SelectionStatement>,
-                                    std::unique_ptr<ForStatement>>
-                           stmt);
+    explicit Statement(
+        std::variant<std::unique_ptr<ExpressionStatement>, std::unique_ptr<ReturnStatement>,
+                     std::unique_ptr<SelectionStatement>, std::unique_ptr<ForStatement>>
+            stmt);
 
     explicit Statement(std::unique_ptr<ExpressionStatement> node);
 
@@ -417,17 +402,15 @@ class Statement {
 
     explicit Statement(std::unique_ptr<SelectionStatement> node);
 
-    std::variant<
-        std::unique_ptr<ExpressionStatement>, std::unique_ptr<ReturnStatement>,
-        std::unique_ptr<SelectionStatement>, std::unique_ptr<ForStatement>>
+    std::variant<std::unique_ptr<ExpressionStatement>, std::unique_ptr<ReturnStatement>,
+                 std::unique_ptr<SelectionStatement>, std::unique_ptr<ForStatement>>
         stmt;
 };
 
 class ForStatement {
    public:
     explicit ForStatement(ForDeclaration init, std::optional<Expression> cond,
-                          std::optional<Expression> inc,
-                          std::unique_ptr<CompoundStatement> body);
+                          std::optional<Expression> inc, std::unique_ptr<CompoundStatement> body);
 
     std::ostream& print(std::ostream& os) const;
 
@@ -438,29 +421,21 @@ class ForStatement {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Statement& node) {
-    if (std::holds_alternative<std::unique_ptr<ExpressionStatement>>(
-            node.stmt)) {
+    if (std::holds_alternative<std::unique_ptr<ExpressionStatement>>(node.stmt)) {
         os << "Statement(ExpressionStatement(";
-        return std::get<std::unique_ptr<ExpressionStatement>>(node.stmt)->print(
-                   os)
-               << "))";
+        return std::get<std::unique_ptr<ExpressionStatement>>(node.stmt)->print(os) << "))";
     }
-    if (std::holds_alternative<std::unique_ptr<SelectionStatement>>(
-            node.stmt)) {
+    if (std::holds_alternative<std::unique_ptr<SelectionStatement>>(node.stmt)) {
         os << "Statement(SelectionStatement(";
-        return std::get<std::unique_ptr<SelectionStatement>>(node.stmt)->print(
-                   os)
-               << "))";
+        return std::get<std::unique_ptr<SelectionStatement>>(node.stmt)->print(os) << "))";
     }
     if (std::holds_alternative<std::unique_ptr<ForStatement>>(node.stmt)) {
         os << "Statement(ForStatement(";
-        return std::get<std::unique_ptr<ForStatement>>(node.stmt)->print(os)
-               << "))";
+        return std::get<std::unique_ptr<ForStatement>>(node.stmt)->print(os) << "))";
     }
     if (std::holds_alternative<std::unique_ptr<ReturnStatement>>(node.stmt)) {
         os << "Statement(ReturnStatement(";
-        return std::get<std::unique_ptr<ReturnStatement>>(node.stmt)->print(os)
-               << "))";
+        return std::get<std::unique_ptr<ReturnStatement>>(node.stmt)->print(os) << "))";
     }
     throw std::runtime_error("Not implemented");
 }
@@ -494,8 +469,7 @@ struct CompoundStatement {
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const CompoundStatement& node) {
+inline std::ostream& operator<<(std::ostream& os, const CompoundStatement& node) {
     os << "CompoundStatement(items=[";
     for (auto& v : node.items) {
         if (std::holds_alternative<Declaration>(v.item)) {
@@ -512,16 +486,15 @@ inline std::ostream& operator<<(std::ostream& os,
 
 class FuncDef {
    public:
-    FuncDef(std::vector<DeclarationSpecifier> p_declarationSpecifiers,
-            Declarator p_declarator, CompoundStatement p_body)
+    FuncDef(std::vector<DeclarationSpecifier> p_declarationSpecifiers, Declarator p_declarator,
+            CompoundStatement p_body)
         : declarationSpecifiers(std::move(p_declarationSpecifiers)),
           declarator(std::move(p_declarator)),
           body(std::move(p_body)) {}
 
     std::string Name() const {
         if (declarator.directDeclarator.kind == DeclaratorKind::FUNCTION) {
-            return std::get<FunctionDirectDeclarator>(
-                       declarator.directDeclarator.declarator)
+            return std::get<FunctionDirectDeclarator>(declarator.directDeclarator.declarator)
                 .declarator.name;
         }
         throw std::runtime_error("Not a function");
@@ -529,8 +502,7 @@ class FuncDef {
 
     FunctionDirectDeclarator DirectDeclarator() const {
         assert(declarator.directDeclarator.kind == DeclaratorKind::FUNCTION);
-        return std::get<FunctionDirectDeclarator>(
-            declarator.directDeclarator.declarator);
+        return std::get<FunctionDirectDeclarator>(declarator.directDeclarator.declarator);
     }
 
     std::vector<DeclarationSpecifier> declarationSpecifiers;
@@ -539,24 +511,20 @@ class FuncDef {
 };
 
 struct ExternalDeclaration {
-    explicit ExternalDeclaration(
-        std::variant<Declaration, std::unique_ptr<FuncDef>> p_node)
+    explicit ExternalDeclaration(std::variant<Declaration, std::unique_ptr<FuncDef>> p_node)
         : node(std::move(p_node)) {}
 
     explicit ExternalDeclaration(Declaration p_node)
-        : node(std::variant<Declaration, std::unique_ptr<FuncDef>>(
-              std::move(p_node))) {}
+        : node(std::variant<Declaration, std::unique_ptr<FuncDef>>(std::move(p_node))) {}
 
     explicit ExternalDeclaration(std::unique_ptr<FuncDef> p_node)
-        : node(std::variant<Declaration, std::unique_ptr<FuncDef>>(
-              std::move(p_node))) {}
+        : node(std::variant<Declaration, std::unique_ptr<FuncDef>>(std::move(p_node))) {}
 
    public:
     std::variant<Declaration, std::unique_ptr<FuncDef>> node;
 };
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const ExternalDeclaration& node) {
+inline std::ostream& operator<<(std::ostream& os, const ExternalDeclaration& node) {
     if (std::holds_alternative<Declaration>(node.node)) {
         const auto& decl = std::get<Declaration>(node.node);
         os << "ExternalDeclaration(Declaration(declarationSpecifiers=[";
@@ -575,16 +543,14 @@ inline std::ostream& operator<<(std::ostream& os,
         for (auto& v : funcdef->declarationSpecifiers) {
             os << v << ",";
         }
-        os << "]\n, declarator=" << funcdef->declarator
-           << "\n, body=" << funcdef->body;
+        os << "]\n, declarator=" << funcdef->declarator << "\n, body=" << funcdef->body;
     }
     return os;
 }
 
 class Program {
    public:
-    explicit Program(std::vector<ExternalDeclaration> p_nodes)
-        : nodes(std::move(p_nodes)) {}
+    explicit Program(std::vector<ExternalDeclaration> p_nodes) : nodes(std::move(p_nodes)) {}
     std::vector<ExternalDeclaration> nodes;
 };
 

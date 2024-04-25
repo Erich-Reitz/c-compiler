@@ -36,8 +36,7 @@ std::ostream& operator<<(std::ostream& os, const Operation& ins) {
         os << "deref " << deref.dst << ", " << deref.src;
     } else if (std::holds_alternative<Equal>(ins)) {
         const auto& equal = std::get<Equal>(ins);
-        os << "equal " << equal.dst << ", " << equal.left << ", "
-           << equal.right;
+        os << "equal " << equal.dst << ", " << equal.left << ", " << equal.right;
     } else if (std::holds_alternative<ConditionalJumpEqual>(ins)) {
         const auto& cj = std::get<ConditionalJumpEqual>(ins);
         os << "cj " << cj.trueLabel << ", " << cj.falseLabel;
@@ -66,6 +65,9 @@ std::ostream& operator<<(std::ostream& os, const Operation& ins) {
     } else if (std::holds_alternative<GreaterThan>(ins)) {
         const auto& gt = std::get<GreaterThan>(ins);
         os << "gt " << gt.dst << ", " << gt.left << ", " << gt.right;
+    } else if (std::holds_alternative<LessThan>(ins)) {
+        const auto& lt = std::get<LessThan>(ins);
+        os << "lt " << lt.dst << ", " << lt.left << ", " << lt.right;
     } else if (std::holds_alternative<ConditionalJumpGreater>(ins)) {
         const auto& cj = std::get<ConditionalJumpGreater>(ins);
         os << "cjg " << cj.trueLabel << ", " << cj.falseLabel;
@@ -81,9 +83,11 @@ std::ostream& operator<<(std::ostream& os, const Operation& ins) {
     } else if (std::holds_alternative<NotEqual>(ins)) {
         const auto& neq = std::get<NotEqual>(ins);
         os << "neq " << neq.dst << ", " << neq.left << ", " << neq.right;
+    } else if (std::holds_alternative<ConditionalJumpNotEqual>(ins)) {
+        const auto& cj = std::get<ConditionalJumpNotEqual>(ins);
+        os << "cjneq " << cj.trueLabel << ", " << cj.falseLabel;
     } else {
-        throw std::runtime_error("Unknown instruction type " +
-                                 std::to_string(ins.index()));
+        throw std::runtime_error("Unknown instruction type " + std::to_string(ins.index()));
     }
     return os;
 }
@@ -93,9 +97,10 @@ Label get_true_label(const CondJ& condj) {
         return std::get<ConditionalJumpEqual>(condj).trueLabel;
     } else if (std::holds_alternative<ConditionalJumpGreater>(condj)) {
         return std::get<ConditionalJumpGreater>(condj).trueLabel;
+    } else if (std::holds_alternative<ConditionalJumpNotEqual>(condj)) {
+        return std::get<ConditionalJumpNotEqual>(condj).trueLabel;
     } else {
-        throw std::runtime_error("Unknown conditional jump type " +
-                                 std::to_string(condj.index()));
+        throw std::runtime_error("Unknown conditional jump type " + std::to_string(condj.index()));
     }
 }
 Label get_false_label(const CondJ& condj) {
@@ -103,9 +108,10 @@ Label get_false_label(const CondJ& condj) {
         return std::get<ConditionalJumpEqual>(condj).falseLabel;
     } else if (std::holds_alternative<ConditionalJumpGreater>(condj)) {
         return std::get<ConditionalJumpGreater>(condj).falseLabel;
+    } else if (std::holds_alternative<ConditionalJumpNotEqual>(condj)) {
+        return std::get<ConditionalJumpNotEqual>(condj).falseLabel;
     } else {
-        throw std::runtime_error("Unknown conditional jump type " +
-                                 std::to_string(condj.index()));
+        throw std::runtime_error("Unknown conditional jump type " + std::to_string(condj.index()));
     }
 }
 
@@ -116,13 +122,11 @@ std::ostream& operator<<(std::ostream& os, const Temp& temp) {
     return os;
 }
 
-bool operator<(const target::HardcodedRegister& lhs,
-               const target::HardcodedRegister& rhs) {
+bool operator<(const target::HardcodedRegister& lhs, const target::HardcodedRegister& rhs) {
     return lhs.reg < rhs.reg;
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const target::HardcodedRegister& reg) {
+std::ostream& operator<<(std::ostream& os, const target::HardcodedRegister& reg) {
     os << target::to_asm(reg.reg, reg.size);
     return os;
 }

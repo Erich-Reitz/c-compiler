@@ -92,7 +92,18 @@ struct GreaterThan {
     Value right;
 };
 
+struct LessThan {
+    Value dst;
+    Value left;
+    Value right;
+};
+
 struct ConditionalJumpEqual {
+    Label trueLabel;
+    Label falseLabel;
+};
+
+struct ConditionalJumpNotEqual {
     Label trueLabel;
     Label falseLabel;
 };
@@ -134,12 +145,12 @@ struct DefineStackPushed {
 };
 
 using Operation =
-    std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref,
-                 Compare, Jump, Equal, ConditionalJumpEqual,
-                 ConditionalJumpGreater, LabelDef, Call, DerefStore,
-                 GreaterThan, ConditionalJumpLess, NotEqual>;
+    std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref, Compare, Jump, Equal,
+                 ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef,
+                 Call, DerefStore, GreaterThan, ConditionalJumpLess, NotEqual, LessThan>;
 
-using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater>;
+using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
+                           ConditionalJumpLess>;
 
 Label get_true_label(const CondJ& condj);
 Label get_false_label(const CondJ& condj);
@@ -154,16 +165,14 @@ concept IsRegister = std::is_same<T, target::HardcodedRegister>::value ||
                      std::is_same<T, target::VirtualRegister>::value;
 
 template <typename T>
-concept IsIRLocation = std::is_same<T, qa_ir::Temp>::value ||
-                       std::is_same<T, qa_ir::Variable>::value;
+concept IsIRLocation =
+    std::is_same<T, qa_ir::Temp>::value || std::is_same<T, qa_ir::Variable>::value;
 
 bool operator<(const Temp& lhs, const Temp& rhs);
 std::ostream& operator<<(std::ostream& os, const Temp& temp);
 
-bool operator<(const target::HardcodedRegister& lhs,
-               const target::HardcodedRegister& rhs);
-std::ostream& operator<<(std::ostream& os,
-                         const target::HardcodedRegister& reg);
+bool operator<(const target::HardcodedRegister& lhs, const target::HardcodedRegister& rhs);
+std::ostream& operator<<(std::ostream& os, const target::HardcodedRegister& reg);
 
 std::ostream& operator<<(std::ostream& os, const Value& v);
 

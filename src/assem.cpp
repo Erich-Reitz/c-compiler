@@ -1,312 +1,506 @@
 #include "../include/assem.hpp"
 
 #include <cassert>
+#include <concepts>
+#include <functional>
 #include <map>
+#include <optional>
+#include <ranges>
 #include <stdexcept>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace qa_ir {
 
-void MunchStmt(std::vector<Operation>& ins,
-               const std::unique_ptr<ast::Node>& node, Ctx& ctx);
-
-Value GenerateIRForRhs(std::vector<Operation>& ins, const ast::Node* node,
-                       Ctx& ctx) {
-    switch (node->type) {
-        case ast::NodeType::ConstInt: {
-            return node->value;
+auto generate_function_prologue_instructions(const ast::FrameAstNode* function, F_Ctx& ctx)
+    -> std::vector<Operation> {
+    std::vector<Operation> instructions;
+    for (const auto [idx, param] : function->params | std::views::enumerate) {
+        auto var = std::make_shared<ast::VariableAstNode>(param.name, param.type);
+        Value dst = ctx.AddVariable(var);
+        if (static_cast<size_t>(idx) >= target::param_regs.size()) {
+            const auto i = DefineStackPushed{.name = param.name, .size = param.type.size};
+            instructions.push_back(i);
+        } else {
+            const auto param_register = target::param_register_by_convention(idx, param.type.size);
+            const auto move_instruction = MovR{.dst = dst, .src = param_register};
+            instructions.push_back(move_instruction);
         }
-        case ast::NodeType::Var: {
-            return ctx.getVariable(node->variableName);
-        }
-        case ast::NodeType::BinOp: {
-            auto lhs = GenerateIRForRhs(ins, node->lhs.get(), ctx);
-            auto rhs = GenerateIRForRhs(ins, node->rhs.get(), ctx);
-            auto dst = ctx.newTemp(SizeOf(lhs));
-            if (node->binOpKind == ast::BinOpKind::Add) {
-                auto binop_instruction =
-                    Add{.dst = dst, .left = lhs, .right = rhs};
-                ins.emplace_back(binop_instruction);
-                return dst;
-            } else if (node->binOpKind == ast::BinOpKind::Sub) {
-                auto binop_instruction =
-                    Sub{.dst = dst, .left = lhs, .right = rhs};
-                ins.emplace_back(binop_instruction);
-                return dst;
-            } else if (node->binOpKind == ast::BinOpKind::Eq) {
-                auto binop_instruction =
-                    Equal{.dst = dst, .left = lhs, .right = rhs};
-                ins.emplace_back(binop_instruction);
-                return dst;
-            } else if (node->binOpKind == ast::BinOpKind::Gt) {
-                auto binop_instruction =
-                    GreaterThan{.dst = dst, .left = lhs, .right = rhs};
-                ins.emplace_back(binop_instruction);
-                return dst;
-            } else if (node->binOpKind == ast::BinOpKind::Neq) {
-                auto binop_instruction =
-                    NotEqual{.dst = dst, .left = lhs, .right = rhs};
-                ins.emplace_back(binop_instruction);
-                return dst;
-            } else {
-                throw std::runtime_error(
-                    "GenerateIRForRhs not implemented for binop: " +
-                    std::to_string(static_cast<int>(node->binOpKind)));
-            }
-            return dst;
-        }
-        case ast::NodeType::Call: {
-            std::vector<Value> args;
-            for (auto [arg, idx] = std::tuple{node->callArgs.begin(), 0};
-                 arg != node->callArgs.end(); ++arg, ++idx) {
-                args.emplace_back(GenerateIRForRhs(ins, arg->get(), ctx));
-            }
-            const auto returnSize = node->returnType.size;
-            auto dst = ctx.newTemp(returnSize);
-            auto call_instruction =
-                Call{.name = node->callName, .args = args, .dst = dst};
-            ins.emplace_back(call_instruction);
-            return dst;
-        }
-        case ast::NodeType::Addr: {
-            auto src = GenerateIRForRhs(ins, node->expr.get(), ctx);
-            auto dst = ctx.newTemp(target::address_size);
-            auto addr_instruction = Addr{.dst = dst, .src = src};
-            ins.emplace_back(addr_instruction);
-            return dst;
-        }
-        case ast::NodeType::Deref: {
-            auto src = GenerateIRForRhs(ins, node->expr.get(), ctx);
-            auto variable = std::get<Variable>(src);
-            const auto* const var = ctx.variables.at(variable.name);
-            const auto varDataType = var->variableType;
-            assert(varDataType.pointsTo != nullptr);
-            const auto depth = node->derefDepth;
-            auto dst = ctx.newTemp(varDataType.pointsTo->size);
-            auto deref_instruction =
-                Deref{.dst = dst, .src = src, .depth = depth};
-            ins.emplace_back(deref_instruction);
-            return dst;
-        }
-        default:
-            throw std::runtime_error(
-                "GenerateIRForRhs not implemented for type: " +
-                std::to_string(static_cast<int>(node->type)));
     }
-}
-void GenerateIRForReturnNode(std::vector<Operation>& ins,
-                             const std::unique_ptr<ast::Node>& node, Ctx& ctx) {
-    auto ret = GenerateIRForRhs(ins, node->expr.get(), ctx);
-    auto ret_instruction = Ret{.value = ret};
-    ins.emplace_back(ret_instruction);
+
+    return instructions;
 }
 
-void GenerateIRForMovNode(std::vector<Operation>& ins,
-                          const std::unique_ptr<ast::Node>& node, Ctx& ctx) {
-    auto src = GenerateIRForRhs(ins, node->rhs.get(), ctx);
-    switch (node->lhs->type) {
-        case ast::NodeType::Var: {
-            auto dst = ctx.AddVariable(node->lhs.get());
-            auto mov_instruction = Mov{.dst = dst, .src = src};
-            ins.emplace_back(mov_instruction);
-            return;
-        }
-        case ast::NodeType::Deref: {
-            auto dst = GenerateIRForRhs(ins, node->lhs->expr.get(), ctx);
-            auto deref_instruction = DerefStore{.dst = dst, .src = src};
-            ins.emplace_back(deref_instruction);
-            return;
-        }
-        default:
-            throw std::runtime_error(
-                "GenerateIRForMovNode not implemented for type: " +
-                std::to_string(static_cast<int>(node->lhs->type)));
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
+    if (ctx.variables.find(node->name) == ctx.variables.end()) {
+        auto var = std::make_shared<ast::VariableAstNode>(node->name, node->type);
+        Value dst = ctx.AddVariable(var);
+        return dst;
     }
+
+    assert(node != nullptr);
+    const auto var = ctx.variables.at(node->name);
+    return Variable{.name = var->name, .size = var->type.size};
 }
 
-void GenerateIRForForLoop(std::vector<Operation>& ins,
-                          const std::unique_ptr<ast::Node>& node, Ctx& ctx) {
-    // the init code
-    MunchStmt(ins, node->forInit, ctx);
-    // loop conditional then jump label
-    auto bottom_loop_label = ctx.newLabel();
-    auto bottom_loop_label_instruction = LabelDef{.label = bottom_loop_label};
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
+    auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
+
+    static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
+        {ast::BinOpKind::Add,
+         [](Value dst, Value left, Value right) -> Operation {
+             return Add{.dst = dst, .left = left, .right = right};
+         }},
+        {ast::BinOpKind::Sub,
+         [](Value dst, Value left, Value right) -> Operation {
+             return Sub{.dst = dst, .left = left, .right = right};
+         }},
+        {ast::BinOpKind::Eq,
+         [](Value dst, Value left, Value right) -> Operation {
+             return Equal{.dst = dst, .left = left, .right = right};
+         }},
+        {ast::BinOpKind::Gt,
+         [](Value dst, Value left, Value right) -> Operation {
+             return GreaterThan{.dst = dst, .left = left, .right = right};
+         }},
+        {ast::BinOpKind::Neq,
+         [](Value dst, Value left, Value right) -> Operation {
+             return NotEqual{.dst = dst, .left = left, .right = right};
+         }},
+        {ast::BinOpKind::Lt,
+         [](Value dst, Value left, Value right) -> Operation {
+             return LessThan{.dst = dst, .left = left, .right = right};
+         }},
+    };
+
+    auto bin_op = node->kind;
+    if (bin_op_map.find(bin_op) == bin_op_map.end()) {
+        throw std::runtime_error("Unsupported binary operation " + ast::bin_op_to_string(bin_op));
+    }
+
+    auto bin_op_func = bin_op_map.at(bin_op);
+    // TODO: fix the size on this
+    auto dst = ctx.AddTemp(4);
+    auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
+    ops.push_back(bin_op_instruction);
+    return dst;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value {
+    return node->value;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    auto variable = std::visit(rhs_visitor, node->expr.node);
+    const auto dst = ctx.AddTemp(target::address_size);
+    const auto addr_instruction = Addr{.dst = dst, .src = variable};
+    ops.push_back(addr_instruction);
+    return dst;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    auto src = std::visit(rhs_visitor, node->expr.node);
+    auto variable = std::get<Variable>(src);
+    const auto astVariable = ctx.variables.at(variable.name);
+    const auto variableType = astVariable->type;
+    assert(variableType.pointsTo != nullptr);
+    const auto depth = node->deref_depth();
+
+    const auto dest = ctx.AddTemp(variableType.pointsTo->size);
+    const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
+    ops.push_back(deref_instruction);
+    return dest;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx)
+    -> Value {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+    auto value_pointing_to = std::visit(rhs_visitor, node->expr.node);
+    return value_pointing_to;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::ForLoopAstNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_ir_for_rhs(std::vector<Operation>& ops, ast::ForLoopAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx)
+    -> Value {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    std::vector<Value> args;
+    for (auto [idx, arg] : node->callArgs | std::views::enumerate) {
+        auto arg_value = std::visit(rhs_visitor, arg.node);
+        args.push_back(arg_value);
+    }
+    const auto return_size = node->returnType.size;
+    const auto dst = ctx.AddTemp(return_size);
+    const auto call_instruction = Call{.name = node->callName, .args = args, .dst = dst};
+    ops.push_back(call_instruction);
+    return dst;
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::JumpAstNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_ir_for_rhs(std::vector<Operation>& ops, ast::JumpAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_ir_for_rhs(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_ir_for_rhs(std::vector<Operation>& ops, ast::ReturnAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_ir_for_rhs(std::vector<Operation>& ops, ast::MoveAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::VariableAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::ConstIntAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::AddrAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::AddrAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::DerefReadAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx)
+    -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::ForLoopAstNode* node, F_Ctx& ctx) -> void {
+    // run the init code like normal
+    gen_ir_for_stmt(ops, node->forInit.get(), ctx);
+
+    /** loop conditional then jump label **/
+    const auto bottom_loop_label = ctx.AddLabel();
+    const auto bottom_loop_label_def_ins = LabelDef{.label = bottom_loop_label};
+
     // the instruction to jump to the conditional then update label
     auto jump_instruction = Jump{.label = bottom_loop_label};
-    ins.emplace_back(jump_instruction);
-    auto loop_body_and_update_label = ctx.newLabel();
-    auto loop_body_and_update_label_instruction =
-        LabelDef{.label = loop_body_and_update_label};
-    ins.emplace_back(loop_body_and_update_label_instruction);
-    for (const auto& stmt : node->forBody) {
-        MunchStmt(ins, stmt, ctx);
+    ops.emplace_back(jump_instruction);
+
+    auto loop_body_and_update_label = ctx.AddLabel();
+    auto loop_body_and_update_label_instruction = LabelDef{.label = loop_body_and_update_label};
+    ops.emplace_back(loop_body_and_update_label_instruction);
+    for (auto& node : node->forBody) {
+        munch_stmt(ops, node, ctx);
     }
-    // then the instruction to update
+    // then the instruction to update the (increment) part of the for loop
     if (node->forUpdate.has_value()) {
-        auto update_instructions = std::vector<Operation>{};
-        const auto& update = node->forUpdate.value();
-        MunchStmt(update_instructions, update, ctx);
-        ins.insert(ins.end(), update_instructions.begin(),
-                   update_instructions.end());
+        std::visit([&ops, &ctx](auto&& arg) { gen_ir_for_stmt(ops, arg.get(), ctx); },
+                   node->forUpdate.value().node);
     }
     // then define the bottom loop label
-    ins.emplace_back(bottom_loop_label_instruction);
-    auto exit_loop_label = ctx.newLabel();
-    auto exit_loop_label_instruction = LabelDef{.label = exit_loop_label};
-    if (node->forCondition) {
-        auto condition = node->forCondition.value().get();
-        auto lhs = GenerateIRForRhs(ins, condition->lhs.get(), ctx);
-        auto rhs = GenerateIRForRhs(ins, condition->rhs.get(), ctx);
-        auto cmp_instruction = Compare{.left = lhs, .right = rhs};
-        ins.emplace_back(cmp_instruction);
-        if (condition->binOpKind == ast::BinOpKind::Gt) {
-            auto conditional_jump_instruction =
-                ConditionalJumpGreater{.trueLabel = loop_body_and_update_label,
-                                       .falseLabel = exit_loop_label};
-            ins.emplace_back(conditional_jump_instruction);
-        } else if (condition->binOpKind == ast::BinOpKind::Lt) {
-            auto conditional_jump_instruction =
-                ConditionalJumpLess{.trueLabel = loop_body_and_update_label,
-                                    .falseLabel = exit_loop_label};
-            ins.emplace_back(conditional_jump_instruction);
-        } else {
-            throw std::runtime_error(
-                "GenerateIRForForLoop not implemented for binop: " +
-                std::to_string(static_cast<int>(condition->binOpKind)));
-        }
+    ops.emplace_back(bottom_loop_label_def_ins);
+    auto exit_label = ctx.AddLabel();
+    auto exit_label_instruction = LabelDef{.label = exit_label};
+
+    if (node->forCondition.has_value()) {
+        std::visit(
+            [&ops, &ctx, &loop_body_and_update_label, &exit_label](auto&& arg) {
+                return gen_ir_for_conditonal(ops, arg.get(), ctx, loop_body_and_update_label,
+                                             exit_label);
+            },
+            node->forCondition.value().node);
     } else {
-        auto jump_back_to_top = Jump{.label = loop_body_and_update_label};
-        ins.emplace_back(jump_back_to_top);
+        auto unconditional_jump_back_to_top = Jump{.label = loop_body_and_update_label};
+        ops.emplace_back(unconditional_jump_back_to_top);
     }
-    ins.emplace_back(exit_loop_label_instruction);
+    ops.emplace_back(exit_label_instruction);
 }
 
-/*
- * Things like .. if (a) have already been converted to if (a == 0) with flipped
- * then / else
- */
-CondJ GenerateConditionalIR(std::vector<Operation>& ins,
-                            const std::unique_ptr<ast::Node>& condition,
-                            Ctx& ctx) {
-    std::vector<Operation> instructions;
-    auto then_label = ctx.newLabel();
-    auto else_label = ctx.newLabel();
-    auto lhs = GenerateIRForRhs(instructions, condition->lhs.get(), ctx);
-    auto rhs = GenerateIRForRhs(instructions, condition->rhs.get(), ctx);
-    auto cmp_instruction = Compare{.left = lhs, .right = rhs};
-    instructions.emplace_back(cmp_instruction);
-    if (condition->binOpKind == ast::BinOpKind::Eq) {
-        auto conditional_jump_instruction = ConditionalJumpEqual{
-            .trueLabel = then_label, .falseLabel = else_label};
-        instructions.emplace_back(conditional_jump_instruction);
-        ins.insert(ins.end(), instructions.begin(), instructions.end());
-        return conditional_jump_instruction;
-    }
-    if (condition->binOpKind == ast::BinOpKind::Gt) {
-        auto conditional_jump_instruction = ConditionalJumpGreater{
-            .trueLabel = then_label, .falseLabel = else_label};
-        instructions.emplace_back(conditional_jump_instruction);
-        ins.insert(ins.end(), instructions.begin(), instructions.end());
-        return conditional_jump_instruction;
-    }
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx)
+    -> void {
+    gen_ir_for_rhs(ops, node, ctx);
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::VariableAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
     throw std::runtime_error(
-        "GenerateConditionalIR not implemented for binop: " +
-        std::to_string(static_cast<int>(condition->binOpKind)));
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::VariableAstNode* node, F_Ctx& "
+        "ctx)");
 }
 
-void GenerateIRForIf(std::vector<Operation>& ins,
-                     const std::unique_ptr<ast::Node>& node, Ctx& ctx) {
-    auto conditionalJump = GenerateConditionalIR(ins, node->condition, ctx);
-    auto then_label = get_true_label(conditionalJump);
-    auto else_label = get_false_label(conditionalJump);
-    auto then_instructions = std::vector<Operation>{};
-    for (const auto& stmt : node->then) {
-        MunchStmt(then_instructions, stmt, ctx);
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
+    auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
+    auto compareInstruction = Compare{.left = lhs_value, .right = rhs_value};
+    ops.push_back(compareInstruction);
+    std::map<ast::BinOpKind, std::function<CondJ(Value, Value)>> bin_op_map{
+        {ast::BinOpKind::Eq,
+         [&](Value left, Value right) -> CondJ {
+             auto condj = ConditionalJumpEqual{.trueLabel = true_label, .falseLabel = false_label};
+             ops.push_back(condj);
+             return condj;
+         }},
+        {ast::BinOpKind::Gt,
+         [&](Value left, Value right) -> CondJ {
+             auto condj =
+                 ConditionalJumpGreater{.trueLabel = true_label, .falseLabel = false_label};
+             ops.push_back(condj);
+             return condj;
+         }},
+        {ast::BinOpKind::Neq,
+         [&](Value left, Value right) -> CondJ {
+             auto condj =
+                 ConditionalJumpNotEqual{.trueLabel = true_label, .falseLabel = false_label};
+             ops.push_back(condj);
+             return condj;
+         }},
+        {ast::BinOpKind::Lt,
+         [&](Value left, Value right) -> CondJ {
+             auto condj = ConditionalJumpLess{.trueLabel = true_label, .falseLabel = false_label};
+             ops.push_back(condj);
+             return condj;
+         }},
+    };
+
+    auto bin_op = node->kind;
+    if (bin_op_map.find(bin_op) == bin_op_map.end()) {
+        throw std::runtime_error("Unsupported binary operation.");
     }
-    auto else_instructions = std::vector<Operation>{};
-    for (const auto& stmt : node->else_) {
-        MunchStmt(else_instructions, stmt, ctx);
+
+    std::function<qa_ir::CondJ(qa_ir::Value, qa_ir::Value)> bin_op_func = bin_op_map.at(bin_op);
+    return bin_op_func(lhs_value, rhs_value);
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ConstIntAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ConstIntAstNode* node, F_Ctx& "
+        "ctx");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::AddrAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::AddrAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::DerefReadAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::DerefReadAstNode* node, "
+        "F_Ctx&, Label true_label, Label false_label "
+        "ctx)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::DerefWriteAstNode* node, "
+        "F_Ctx&, Label true_label, Label false_label "
+        "ctx)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ForLoopAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ForLoopAstNode* node, F_Ctx& ctx, "
+        "Label true_label, Label false_label)");
+}
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ReturnAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::ReturnAstNode* node, F_Ctx& ctx, "
+        "Label true_label, Label false_label)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::MoveAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::MoveAstNode* node, F_Ctx& ctx, "
+        "Label true_label, Label false_label)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx, Label "
+        "true_label, Label false_label)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::JumpAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx, Label "
+        "true_label, Label false_label)");
+}
+
+auto gen_ir_for_conditonal(std::vector<Operation>& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx,
+                           Label true_label, Label false_label) -> CondJ {
+    throw std::runtime_error(
+        "gen_ir_for_conditonal(std::vector<Operation>& ops, ast::FunctionCallAstNode* node, "
+        "F_Ctx&, Label true_label, Label false_label "
+        "ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::JumpAstNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error(
+        "gen_ir_for_stmt(std::vector<Operation>& ops, ast::JumpAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::IfNode* node, F_Ctx& ctx) -> void {
+    auto true_label = ctx.AddLabel();
+    auto false_label = ctx.AddLabel();
+
+    const auto conditional_visitor = [&ops, &ctx, &true_label, &false_label](auto&& arg) -> CondJ {
+        return gen_ir_for_conditonal(ops, arg.get(), ctx, true_label, false_label);
+    };
+
+    auto conditionalJump = std::visit(conditional_visitor, node->condition.node);
+
+    std::vector<Operation> true_instructions = {};
+
+    for (auto& node : node->then) {
+        munch_stmt(true_instructions, node, ctx);
     }
-    auto then_jump_instruction = LabelDef{.label = then_label};
-    ins.emplace_back(then_jump_instruction);
-    ins.insert(ins.end(), then_instructions.begin(), then_instructions.end());
-    auto else_jump_instruction = LabelDef{.label = else_label};
-    ins.emplace_back(else_jump_instruction);
-    if (else_instructions.size() > 0) {
-        ins.insert(ins.end(), else_instructions.begin(),
-                   else_instructions.end());
+    std::vector<Operation> false_instructions = {};
+    if (node->else_.has_value()) {
+        for (auto& node : *node->else_) {
+            munch_stmt(false_instructions, node, ctx);
+        }
+    }
+
+    // define true branch
+    auto then = LabelDef{.label = true_label};
+    ops.emplace_back(then);
+    std::ranges::copy(true_instructions, std::back_inserter(ops));
+
+    // define false branch
+    auto else_ = LabelDef{.label = false_label};
+    ops.emplace_back(else_);
+    if (node->else_.has_value()) {
+        std::ranges::copy(false_instructions, std::back_inserter(ops));
     }
 }
 
-void MunchStmt(std::vector<Operation>& ins,
-               const std::unique_ptr<ast::Node>& node, Ctx& ctx) {
-    switch (node->type) {
-        case ast::NodeType::Return: {
-            GenerateIRForReturnNode(ins, node, ctx);
-            return;
-        }
-        case ast::NodeType::Move: {
-            GenerateIRForMovNode(ins, node, ctx);
-            return;
-        }
-        case ast::NodeType::If: {
-            GenerateIRForIf(ins, node, ctx);
-            return;
-        }
-        case ast::NodeType::Call: {
-            auto dst = GenerateIRForRhs(ins, node.get(), ctx);
-            return;
-        }
-        case ast::NodeType::ForLoop: {
-            GenerateIRForForLoop(ins, node, ctx);
-            return;
-        }
-        default:
-            throw std::runtime_error(
-                "MunchStmt not implemented for type: " +
-                std::to_string(static_cast<int>(node->type)));
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> void {
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        return gen_ir_for_rhs(ops, arg.get(), ctx);
+    };
+
+    auto return_value = std::visit(rhs_visitor, node->expr.node);
+    const auto return_instruction = Ret{.value = return_value};
+    ops.push_back(return_instruction);
+}
+
+auto gen_ir_for_stmt(std::vector<Operation>& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void {
+    assert(node != nullptr);
+
+    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
+        auto ptr = arg.get();
+        assert(ptr != nullptr);
+        return gen_ir_for_rhs(ops, ptr, ctx);
+    };
+
+    auto src = std::visit(rhs_visitor, node->rhs.node);
+    if (node->lhs.is_variable_ast_node()) {
+        auto var = node->lhs.get_variable_name();
+        auto var_type = node->lhs.get_variable_type();
+        auto dst = ctx.AddVariable(std::make_shared<ast::VariableAstNode>(var, var_type));
+        const auto move_instruction = Mov{.dst = dst, .src = src};
+        ops.push_back(move_instruction);
+    } else if (node->lhs.is_deref_write()) {
+        auto dst = std::visit(rhs_visitor, node->lhs.node);
+        const auto deref_instruction = DerefStore{.dst = dst, .src = src};
+        ops.push_back(deref_instruction);
+    } else {
+        throw std::runtime_error("Unsupported node type.");
     }
 }
 
-[[nodiscard]] std::vector<Frame> Produce_IR(
-    const std::vector<std::unique_ptr<ast::Node>>& nodes) {
+auto munch_stmt(std::vector<Operation>& ops, ast::BodyNode& node, F_Ctx& ctx) -> void {
+    if (node.is_stmt()) {
+        auto stmt = node.get_stmt();
+        std::visit([&ops, &ctx](auto&& arg) { return gen_ir_for_stmt(ops, arg.get(), ctx); },
+                   stmt.node);
+        return;
+    } else if (node.is_move()) {
+        auto move = node.get_move();
+        gen_ir_for_stmt(ops, move.get(), ctx);
+        return;
+    } else {
+        throw std::runtime_error("Unsupported node type.");
+    }
+}
+
+auto generate_ir_for_frame(ast::FrameAstNode* function, F_Ctx& ctx) -> Frame {
+    const auto name = function->name;
+
+    std::vector<Operation> func_instructions =
+        generate_function_prologue_instructions(function, ctx);
+    for (auto& node : function->body) {
+        munch_stmt(func_instructions, node, ctx);
+    }
+    return Frame{.name = name, .instructions = func_instructions};
+}
+
+auto init_new_context() -> F_Ctx {
+    return F_Ctx{.temp_counter = 0, .label_counter = 0, .variables = {}};
+}
+
+auto Produce_IR(std::vector<ast::TopLevelNode>& nodes) -> std::vector<Frame> {
     std::vector<Frame> frames;
-    for (const auto& node : nodes) {
-        auto ctx = Ctx{.counter = 0,
-                       .labelCounter = 0,
-                       .variableUsage = {},
-                       .variables = {}};
-        if (node->type != ast::NodeType::Frame) {
-            continue;
+
+    for (auto& node : nodes) {
+        auto ctx = init_new_context();
+        if (!node.is_function()) {
+            throw std::runtime_error("Only support functions at the top level.");
         }
-        const auto name = node->functionName;
-        std::vector<Operation> instructions;
-        for (auto [p, idx] =
-                 std::tuple{node->params.begin(), static_cast<size_t>(0)};
-             p != node->params.end(); ++p, ++idx) {
-            if (idx >= target::param_regs.size()) {
-                auto var = ast::makeNewVar(p->name, p->type);
-                auto dst = ctx.AddVariable(var.get());
-                auto i =
-                    DefineStackPushed{.name = p->name, .size = p->type.size};
-                instructions.emplace_back(i);
-                continue;
-            }
-            // create a variable node for the paramter
-            auto var = ast::makeNewVar(p->name, p->type);
-            // create a stack location for the variable
-            auto dst = ctx.AddVariable(var.get());
-            const auto param_register = target::param_regs.at(idx);
-            auto src = target::HardcodedRegister{.reg = param_register,
-                                                 .size = p->type.size};
-            instructions.emplace_back(MovR{.dst = dst, .src = src});
-        }
-        auto body = std::move(node->body);
-        for (const auto& item : body) {
-            MunchStmt(instructions, item, ctx);
-        }
-        auto frame = Frame{name, instructions};
-        frames.emplace_back(frame);
+
+        ast::FrameAstNode* function = node.get_function();
+        const auto frame = generate_ir_for_frame(function, ctx);
+        frames.push_back(frame);
     }
+
     return frames;
 }
 }  // namespace qa_ir

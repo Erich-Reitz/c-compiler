@@ -82,8 +82,7 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
             if (newFirstUsed.find(dest) == newFirstUsed.end()) {
                 if (src.has_value()) {
                     // if src is in remapped registers, then we need to remap it
-                    if (remappedRegisters.find(*src) !=
-                        remappedRegisters.end()) {
+                    if (remappedRegisters.find(*src) != remappedRegisters.end()) {
                         remappedRegisters[dest] = remappedRegisters[*src];
                     } else {
                         remappedRegisters[dest] = *src;
@@ -108,15 +107,13 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
     std::vector<Instruction> newInstructions = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
         auto operation = instruction;
-        auto process_register =
-            [&ctx, &remappedRegisters, &firstUse, &lastUse,
-             &idx](VirtualRegister& reg) -> HardcodedRegister {
+        auto process_register = [&ctx, &remappedRegisters, &firstUse, &lastUse,
+                                 &idx](VirtualRegister& reg) -> HardcodedRegister {
             if (remappedRegisters.find(reg) != remappedRegisters.end()) {
                 reg = remappedRegisters[reg];
             }
 
-            if (ctx.mapping.find(reg) == ctx.mapping.end() ||
-                firstUse[reg.id] == idx) {
+            if (ctx.mapping.find(reg) == ctx.mapping.end() || firstUse[reg.id] == idx) {
                 ctx.mapping[reg] = ctx.getReg();
             }
 

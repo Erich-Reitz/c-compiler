@@ -3,258 +3,218 @@
 #include <string>
 #include <vector>
 
+#include "AstNode.hpp"
+#include "DataType.hpp"
+#include "Stmt.hpp"
 #include "st.hpp"
 
 namespace ast {
-enum class NodeType {
-    ConstInt,
-    Frame,
-    Move,
-    Temp,
-    Seq,
-    Jump,
-    Return,
-    Var,
-    Deref,
-    Addr,
-    BinOp,
-    If,
-    Call,
-    ForLoop
-};
-
-enum class BinOpKind { Add, Sub, Eq, Gt, Lt, Neq };
 
 [[nodiscard]] auto is_arithmetic(BinOpKind kind) -> bool;
 [[nodiscard]] auto is_comparison(BinOpKind kind) -> bool;
 
 enum class SelectionKind { If };
-struct DataType {
-    std::string name;
-    int size = 0;
-    DataType* pointsTo = nullptr;
-
-    DataType() : name(""), size(0), pointsTo(nullptr) {}
-
-    DataType(std::string name, int size, DataType* pointsTo)
-        : name(name), size(size), pointsTo(pointsTo) {}
-
-    DataType(const DataType& other)
-        : name(other.name), size(other.size), pointsTo(nullptr) {
-        if (other.pointsTo != nullptr) {
-            pointsTo = new DataType(*other.pointsTo);
-        }
-    }
-
-    DataType& operator=(const DataType& other) {
-        if (this != &other) {
-            name = other.name;
-            size = other.size;
-            delete pointsTo;
-            pointsTo = nullptr;
-            if (other.pointsTo != nullptr) {
-                pointsTo = new DataType(*other.pointsTo);
-            }
-        }
-        return *this;
-    }
-
-    DataType FinalPointsTo() const {
-        if (pointsTo == nullptr) {
-            return *this;
-        }
-        return pointsTo->FinalPointsTo();
-    }
-
-    std::string ToString() const {
-        if (pointsTo == nullptr) {
-            return name;
-        }
-        return name + " -> " + pointsTo->ToString();
-    }
-};
 
 struct FrameParam {
     std::string name;
     DataType type;
 };
 
-class Node {
+struct ConstIntAstNode : public AstNode {
    public:
-    NodeType type;
-
-    // CONST INT
     int value;
 
-    // FRAME
-    std::string functionName;
-    std::vector<std::unique_ptr<ast::Node>> body;
-    std::vector<FrameParam> params;
+    explicit ConstIntAstNode(int value) : value(value) {}
 
-    std::string variableName = "";
-    std::string tempName = "";
+    [[nodiscard]] auto toString() const -> std::string override { return std::to_string(value); }
+};
 
-    // BIN
-    std::unique_ptr<Node> lhs;
-    std::unique_ptr<Node> rhs;
-    BinOpKind binOpKind;
+struct ReturnAstNode : public AstNode {
+   public:
+    Stmt expr;
 
-    // UNARY
-    std::unique_ptr<Node> expr;
+    explicit ReturnAstNode(Stmt expr) : expr(std::move(expr)) {}
 
-    // jump
-    std::string jumpToLabelValue;
-
-    // variable
-    ast::DataType variableType;
-
-    // if
-    std::unique_ptr<Node> condition;
-    std::vector<std::unique_ptr<ast::Node>> then;
-    std::vector<std::unique_ptr<ast::Node>> else_;
-
-    // call
-    std::string callName;
-    std::vector<std::unique_ptr<ast::Node>> callArgs;
-    ast::DataType returnType;
-
-    // for
-    std::unique_ptr<Node> forInit;
-    std::optional<std::unique_ptr<Node>> forCondition;
-    std::optional<std::unique_ptr<Node>> forUpdate;
-    std::vector<std::unique_ptr<ast::Node>> forBody;
-
-    int derefDepth = 0;
-
-    std::string VariableName() {
-        if (type == NodeType::Var) {
-            return variableName;
-        }
-        if (type == NodeType::Deref) {
-            return expr->VariableName();
-        }
-        throw std::runtime_error("VariableName not implemented for type: " +
-                                 std::to_string(static_cast<int>(type)));
+    [[nodiscard]] auto toString() const -> std::string override {
+        return "return " + expr.toString();
     }
 };
 
-std::unique_ptr<Node> makeConstInt(int value);
+struct FrameAstNode : public AstNode {
+   public:
+    std::string name;
+    std::vector<BodyNode> body;
+    std::vector<FrameParam> params;
 
-std::unique_ptr<Node> makeNewFunction(
-    std::string functionName, std::vector<std::unique_ptr<ast::Node>> body,
-    std::vector<FrameParam> params);
+    FrameAstNode(const std::string& p_name, std::vector<BodyNode> p_body,
+                 std::vector<FrameParam> p_params)
+        : name(p_name), body(std::move(p_body)), params(std::move(p_params)) {}
 
-std::unique_ptr<Node> makeNewReturn(std::unique_ptr<ast::Node> expr);
-std::unique_ptr<Node> makeNewVar(std::string name, DataType type);
-
-std::unique_ptr<Node> makeNewMove(std::unique_ptr<ast::Node> left,
-                                  std::unique_ptr<ast::Node> right);
-
-std::unique_ptr<Node> makeNewMemWrite(std::unique_ptr<ast::Node> expr);
-std::unique_ptr<Node> makeNewMemRead(std::unique_ptr<ast::Node> expr);
-std::unique_ptr<Node> makeNewAddr(std::unique_ptr<ast::Node> expr);
-std::unique_ptr<Node> makeNewBinOp(std::unique_ptr<ast::Node> lhs,
-                                   std::unique_ptr<ast::Node> rhs,
-                                   BinOpKind kind);
-std::unique_ptr<Node> makeNewIfStmt(
-    std::unique_ptr<ast::Node> condition,
-    std::vector<std::unique_ptr<ast::Node>> then,
-    std::vector<std::unique_ptr<ast::Node>> else_);
-
-std::unique_ptr<Node> makeNewCall(std::string name,
-                                  std::vector<std::unique_ptr<ast::Node>> args);
-std::unique_ptr<Node> makeNewForLoop(
-    std::unique_ptr<ast::Node> init,
-    std::optional<std::unique_ptr<ast::Node>> condition,
-    std::optional<std::unique_ptr<ast::Node>> update,
-    std::vector<std::unique_ptr<ast::Node>> body);
-
-inline std::ostream& operator<<(std::ostream& os, const Node& node);
-inline std::ostream& DebugFrame(std::ostream& os, const Node& node) {
-    os << "Frame(name=" << node.functionName << ", params=[";
-    for (const auto& param : node.params) {
-        os << param.name << ", ";
-    }
-    os << "], body=[";
-    for (const auto& n : node.body) {
-        os << *n << std::endl;
-    }
-    os << "])";
-    return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Node& node) {
-    switch (node.type) {  //
-        case NodeType::Move:
-            os << "Move(" << *node.lhs << ", " << *node.rhs << ")";
-            break;
-        case NodeType::Return:
-            os << "Return(" << *node.expr << ")";
-            break;
-        case NodeType::Temp:
-            os << "Temp(" << node.tempName << ")";
-            break;
-        case NodeType::Seq:
-            os << "Seq(";
-            for (const auto& n : node.body) {
-                os << *n << ", ";
-            }
-            os << ")";
-            break;
-        case NodeType::Jump:
-            os << "Jump(" << node.jumpToLabelValue << ")";
-            break;
-        case NodeType::Var:
-            os << "Var(variableName=" << node.variableName << ")";
-            break;
-        case NodeType::Deref:
-            os << "Deref(" << *node.expr << ")";
-            break;
-        case NodeType::Addr:
-            os << "Addr(" << *node.expr << ")";
-            break;
-        case NodeType::ConstInt:
-            os << "ConstInt(" << node.value << ")";
-            break;
-        case NodeType::Frame:
-            DebugFrame(os, node);
-            break;
-        case NodeType::BinOp:
-            os << "BinOp(" << *node.lhs << ", " << *node.rhs << ")";
-            break;
-        case NodeType::If:
-            os << "If(" << *node.condition << ", then=[";
-            for (const auto& n : node.then) {
-                os << *n << ", ";
-            }
-            os << "], else=[";
-            for (const auto& n : node.else_) {
-                os << *n << ", ";
-            }
-            os << "])";
-            break;
-        case NodeType::Call:
-            os << "Call(" << node.callName << ", args=[";
-            for (const auto& n : node.callArgs) {
-                os << *n << ", ";
-            }
-            os << "])";
-            break;
-        case NodeType::ForLoop: {
-            os << "ForLoop(init=" << *node.forInit
-               << ", condition=" << **node.forCondition
-               << ", update=" << **node.forUpdate << ", body=[";
-            for (const auto& n : node.forBody) {
-                os << *n << ", ";
-            }
-            os << "])";
-            break;
+    [[nodiscard]] auto toString() const -> std::string override {
+        auto result = "fn " + name + "(";
+        for (const auto& param : params) {
+            result += param.name + ", ";
         }
-        default: {
-            os << "Unknown(" << static_cast<int>(node.type) << ")";
-            break;
+        result += ") {\n";
+        for (const auto& node : body) {
+            result += node.toString() + "\n";
         }
+        result += "}";
+        return result;
     }
-    return os;
-}
+};
+
+struct MoveAstNode : public AstNode {
+   public:
+    Stmt lhs;
+    Stmt rhs;
+
+    MoveAstNode(Stmt lhs, Stmt rhs) : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override;
+};
+
+struct BinaryOpAstNode : public AstNode {
+   public:
+    Stmt lhs;
+    Stmt rhs;
+    BinOpKind kind;
+
+    BinaryOpAstNode(Stmt lhs, Stmt rhs, BinOpKind kind)
+        : lhs(std::move(lhs)), rhs(std::move(rhs)), kind(kind) {}
+
+    const BinOpKind* get_bin_op() const override { return &kind; }
+
+    [[nodiscard]] auto toString() const -> std::string override {
+        return lhs.toString() + " " + bin_op_to_string(kind) + " " + rhs.toString();
+    }
+};
+
+struct DerefReadAstNode : public AstNode {
+   public:
+    Stmt expr;
+
+    explicit DerefReadAstNode(Stmt expr) : expr(std::move(expr)) {}
+
+    [[nodiscard]] auto deref_depth() const -> int {
+        if (std::holds_alternative<std::unique_ptr<DerefReadAstNode>>(expr.node)) {
+            return std::get<std::unique_ptr<DerefReadAstNode>>(expr.node)->deref_depth() + 1;
+        }
+        return 1;
+    }
+
+    [[nodiscard]] auto toString() const -> std::string override { return "*" + expr.toString(); }
+};
+
+struct DerefWriteAstNode : public AstNode {
+   public:
+    Stmt expr;
+
+    explicit DerefWriteAstNode(Stmt expr) : expr(std::move(expr)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return "*" + expr.toString(); }
+};
+
+struct AddrAstNode : public AstNode {
+   public:
+    Stmt expr;
+
+    explicit AddrAstNode(Stmt expr) : expr(std::move(expr)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return "&" + expr.toString(); }
+};
+
+struct JumpAstNode : public AstNode {
+   public:
+    std::string jumpToLabelValue;
+
+    explicit JumpAstNode(std::string jumpToLabelValue)
+        : jumpToLabelValue(std::move(jumpToLabelValue)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override {
+        return "jump " + jumpToLabelValue;
+    }
+};
+
+struct VariableAstNode : public AstNode {
+   public:
+    std::string name;
+    ast::DataType type;
+
+    explicit VariableAstNode(const std::string& p_name, ast::DataType p_type)
+        : name(p_name), type(p_type) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return name; }
+};
+
+struct IfNode : public AstNode {
+   public:
+    Stmt condition;
+    std::vector<BodyNode> then;
+    std::optional<std::vector<BodyNode>> else_;
+
+    IfNode(Stmt condition, std::vector<BodyNode> then, std::vector<BodyNode> else_)
+        : condition(std::move(condition)), then(std::move(then)), else_(std::move(else_)) {}
+
+    IfNode(Stmt condition, std::vector<BodyNode> then, std::optional<std::vector<BodyNode>> else_)
+        : condition(std::move(condition)), then(std::move(then)), else_(std::move(else_)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override {
+        return "if " + condition.toString();
+    }
+};
+
+struct FunctionCallAstNode : public AstNode {
+   public:
+    std::string callName;
+    std::vector<Stmt> callArgs;
+    ast::DataType returnType;
+
+    FunctionCallAstNode(std::string callName, std::vector<Stmt> callArgs, ast::DataType returnType)
+        : callName(std::move(callName)), callArgs(std::move(callArgs)), returnType(returnType) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return callName; }
+};
+
+struct ForLoopAstNode : public AstNode {
+   public:
+    std::unique_ptr<MoveAstNode> forInit;
+    std::optional<Stmt> forCondition;
+    std::optional<Stmt> forUpdate;
+    std::vector<BodyNode> forBody;
+
+    ForLoopAstNode(std::unique_ptr<MoveAstNode> forInit, std::optional<Stmt> forCondition,
+                   std::optional<Stmt> forUpdate, std::vector<BodyNode> forBody)
+        : forInit(std::move(forInit)),
+          forCondition(std::move(forCondition)),
+          forUpdate(std::move(forUpdate)),
+          forBody(std::move(forBody)) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return "for"; }
+};
+
+struct TopLevelNode : public AstNode {
+    std::variant<std::unique_ptr<FrameAstNode>, std::unique_ptr<MoveAstNode>> node;
+
+    TopLevelNode(std::unique_ptr<FrameAstNode> node) : node(std::move(node)) {}
+
+    TopLevelNode(std::unique_ptr<MoveAstNode> node) : node(std::move(node)) {}
+
+    [[nodiscard]] auto is_function() const -> bool {
+        return std::holds_alternative<std::unique_ptr<FrameAstNode>>(node);
+    }
+
+    [[nodiscard]] auto get_function() const -> FrameAstNode* {
+        if (!is_function()) {
+            return nullptr;
+        }
+
+        return std::get<std::unique_ptr<FrameAstNode>>(node).get();
+    }
+
+    [[nodiscard]] auto toString() const -> std::string override {
+        return std::visit([](const auto& node) { return node->toString(); }, node);
+    }
+};
+
 }  // namespace ast

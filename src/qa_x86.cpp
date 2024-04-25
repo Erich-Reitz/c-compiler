@@ -7,6 +7,13 @@ namespace target {
     return to_asm(dst.reg, dst.size) + ", " + to_asm(src.reg, src.size);
 }
 
+[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister {
+    if (static_cast<size_t>(idx) >= param_regs.size()) {
+        throw std::runtime_error("param_register_by_convention: idx out of bounds");
+    }
+    return HardcodedRegister{.reg = param_regs[idx], .size = size};
+}
+
 std::ostream& operator<<(std::ostream& os, BaseRegister reg) {
     switch (reg) {
         case BaseRegister::AX:
@@ -198,13 +205,11 @@ std::ostream& operator<<(std::ostream& os, const Instruction& ins) {
 bool operator<(const Register& lhs, const Register& rhs) {
     if (std::holds_alternative<HardcodedRegister>(lhs) &&
         std::holds_alternative<HardcodedRegister>(rhs)) {
-        return std::get<HardcodedRegister>(lhs).reg <
-               std::get<HardcodedRegister>(rhs).reg;
+        return std::get<HardcodedRegister>(lhs).reg < std::get<HardcodedRegister>(rhs).reg;
     }
     if (std::holds_alternative<VirtualRegister>(lhs) &&
         std::holds_alternative<VirtualRegister>(rhs)) {
-        return std::get<VirtualRegister>(lhs).id <
-               std::get<VirtualRegister>(rhs).id;
+        return std::get<VirtualRegister>(lhs).id < std::get<VirtualRegister>(rhs).id;
     }
     return false;
 }

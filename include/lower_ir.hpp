@@ -15,8 +15,7 @@ struct Ctx {
     [[nodiscard]] Location AllocateNew(qa_ir::Value v);
     [[nodiscard]] Register AllocateNewForTemp(qa_ir::Temp t);
     [[nodiscard]] VirtualRegister NewRegister(int size);
-    [[nodiscard]] std::vector<Instruction> toLocation(Location l,
-                                                      qa_ir::Value v);
+    [[nodiscard]] std::vector<Instruction> toLocation(Location l, qa_ir::Value v);
     [[nodiscard]] int get_stack_offset() const;
 
     void define_stack_pushed_variable(const std::string& name);
@@ -28,7 +27,6 @@ struct Ctx {
 };
 [[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx)
     -> std::vector<Instruction>;
-[[nodiscard]] auto LowerInstruction(qa_ir::LabelDef label, Ctx& ctx)
-    -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::LabelDef label, Ctx& ctx) -> std::vector<Instruction>;
 [[nodiscard]] std::vector<Frame> LowerIR(const std::vector<qa_ir::Frame>& ops);
 }  // namespace target
