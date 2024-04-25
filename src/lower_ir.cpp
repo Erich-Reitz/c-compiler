@@ -331,13 +331,9 @@ std::vector<Instruction> InstructionForArth(ast::BinOpKind kind,
     return result;
 }
 
-[[nodiscard]] std::vector<Instruction> LowerArth(ast::BinOpKind kind,
-                                                 std::optional<qa_ir::Value> dst, qa_ir::Value left,
-                                                 qa_ir::Value right, Ctx& ctx) {
-    std::optional<target::Location> dest_location = std::nullopt;
-    if (dst.has_value()) {
-        dest_location = ctx.AllocateNew(dst.value());
-    }
+[[nodiscard]] std::vector<Instruction> LowerArth(ast::BinOpKind kind, qa_ir::Value dst,
+                                                 qa_ir::Value left, qa_ir::Value right, Ctx& ctx) {
+    auto dest_location = ctx.AllocateNew(dst);
     auto visitor = [&](auto&& left, auto&& right) -> std::vector<Instruction> {
         return InstructionForArth(kind, dest_location, left, right, ctx);
     };
@@ -493,7 +489,10 @@ auto LowerInstruction(qa_ir::GreaterThan arg, Ctx& ctx) -> std::vector<Instructi
 }
 
 auto LowerInstruction(qa_ir::Compare arg, Ctx& ctx) -> std::vector<Instruction> {
-    return LowerArth(ast::BinOpKind::Eq, std::nullopt, arg.left, arg.right, ctx);
+    auto visitor = [&](auto&& left, auto&& right) -> std::vector<Instruction> {
+        return InstructionForArth(ast::BinOpKind::Eq, std::nullopt, left, right, ctx);
+    };
+    return std::visit(visitor, arg.left, arg.right);
 }
 
 auto LowerInstruction(qa_ir::DefineStackPushed arg, Ctx& ctx) -> std::vector<Instruction> {
