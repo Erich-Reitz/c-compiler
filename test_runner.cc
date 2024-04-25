@@ -143,6 +143,12 @@ RUN_TEST_CASE(IntEqualityEq_PositiveCase, "int_equality_eq_positive.c");
 RUN_TEST_CASE(IntEqualityNeq_NegativeCase, "int_equality_neq_negative.c");
 RUN_TEST_CASE(IntEqualityNeq_PositiveCase, "int_equality_neq_positive.c");
 
+RUN_TEST_CASE(IntLessThanNegativeCase, "int_less_than_negative.c");
+RUN_TEST_CASE(IntLessThanPositiveCase, "int_less_than_positive.c");
+
+RUN_TEST_CASE(IntGreaterThanNegativeCase, "int_greater_than_negative.c");
+RUN_TEST_CASE(IntGreaterThanPositiveCase, "int_greater_than_positive.c");
+
 /** If Statements */
 RUN_TEST_CASE(BasicIfStatement, "basic_if_statement.c");
 RUN_TEST_CASE(IfGtStatement, "basic_if_gt_statement.c");
