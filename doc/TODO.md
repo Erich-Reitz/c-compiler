@@ -2,8 +2,8 @@
 - [x] Refactor `ast.hpp` and `translate.cpp`
 - [ ] Look into better ways to overload a function call on the type a variant holds
 - [ ] Handle variables outside of functions
-- [ ] Less than positive and negative test cases
-- [ ] Greater than positive and negative test cases
+- [x] Less than positive and negative test cases
+- [x] Greater than positive and negative test cases
 - [ ] Implement <=
 - [ ] Implement >=
 - [ ] Implement prefix / postfix increment / decrement
