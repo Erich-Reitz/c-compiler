@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -139,9 +140,9 @@ struct JumpAstNode : public AstNode {
 struct VariableAstNode : public AstNode {
    public:
     std::string name;
-    ast::DataType type;
+    DataType type;
 
-    explicit VariableAstNode(const std::string& p_name, ast::DataType p_type)
+    explicit VariableAstNode(const std::string& p_name, DataType p_type)
         : name(p_name), type(p_type) {}
 
     [[nodiscard]] auto toString() const -> std::string override { return name; }

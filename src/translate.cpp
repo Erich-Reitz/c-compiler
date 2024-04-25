@@ -18,9 +18,9 @@ auto translate(const std::unique_ptr<st::PrimaryExpression>& expr, Ctx& ctx) -> 
         return std::make_unique<ConstIntAstNode>(expr->value);
     }
     if (expr->type == st::PrimaryExpressionType::IDEN) {
-        const auto& iden = expr->idenValue;
+        const auto iden = expr->idenValue;
         if (ctx.local_variables.find(iden) != ctx.local_variables.end()) {
-            const auto& var = ctx.local_variables[iden];
+            const auto var = ctx.local_variables[iden];
             return std::make_unique<VariableAstNode>(iden, var->type);
         }
         throw std::runtime_error("Variable not found: " + iden);
@@ -78,14 +78,15 @@ auto translate(const std::unique_ptr<st::ForStatement>& stmt, Ctx& ctx) -> Stmt 
     const st::ForDeclaration& init = stmt->init;
     const auto iden = init.initDeclarator.value().declarator.directDeclarator.VariableIden();
     auto datatype = asttraits::toDataType(init);
-    auto var = std::make_unique<VariableAstNode>(iden, *datatype);
-    ctx.local_variables[iden] = var.get();
+    ctx.local_variables[iden] = std::make_shared<VariableAstNode>(iden, datatype);
     const auto& expr = init.initDeclarator.value().initializer.value().expr;
     ctx.set_lvalueContext("translate(const std::unique_ptr<st::ForStatement> &stmt, Ctx &ctx)",
                           false);
     auto initInFirstEntryOfForLoop = translate(expr, ctx);
     ctx.set_lvalueContext("translate(const std::unique_ptr<st::ForStatement> &stmt, Ctx &ctx)",
                           true);
+
+    auto var = std::make_unique<VariableAstNode>(iden, datatype);
     auto forInit =
         std::make_unique<MoveAstNode>(std::move(var), std::move(initInFirstEntryOfForLoop));
 
@@ -113,7 +114,8 @@ auto translate(const std::unique_ptr<st::FunctionCallExpression>& expr, Ctx& ctx
         args.push_back(std::move(e));
     }
 
-    const auto faux_return_type = DataType("int", 4, nullptr);
+    const auto faux_return_type =
+        DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
 
     return std::make_unique<FunctionCallAstNode>(expr->name, std::move(args), faux_return_type);
 }
@@ -165,12 +167,12 @@ auto translate(const std::unique_ptr<st::SelectionStatement>& stmt, Ctx& ctx) ->
     -> std::unique_ptr<MoveAstNode> {
     const auto iden = decl.initDeclarator.value().declarator.directDeclarator.VariableIden();
     auto datatype = asttraits::toDataType(decl);
-    auto var = std::make_unique<VariableAstNode>(iden, *datatype);
-    ctx.local_variables[iden] = var.get();
+    ctx.local_variables[iden] = std::make_shared<VariableAstNode>(iden, datatype);
     const auto& expr = decl.initDeclarator.value().initializer.value().expr;
     ctx.set_lvalueContext("translate(const st::Declaration &decl, Ctx &ctx)", false);
     auto init = translate(expr, ctx);
     ctx.set_lvalueContext("translate(const st::Declaration &decl, Ctx &ctx)", true);
+    auto var = std::make_unique<VariableAstNode>(iden, datatype);
     return std::make_unique<MoveAstNode>(std::move(var), std::move(init));
 }
 
@@ -181,7 +183,7 @@ auto translate(const std::unique_ptr<st::SelectionStatement>& stmt, Ctx& ctx) ->
         const auto type = asttraits::toDataType(p);
         const auto fp = FrameParam{
             .name = name,
-            .type = *type,
+            .type = type,
         };
         result.push_back(fp);
     }
@@ -219,8 +221,7 @@ auto translate(st::FuncDef* fd, Ctx& ctx) -> std::unique_ptr<FrameAstNode> {
     for (const auto& p : params) {
         const auto paramName = p.name;
         const auto type = p.type;
-        auto var = std::make_unique<VariableAstNode>(paramName, type);
-        ctx.local_variables[p.name] = var.get();
+        ctx.local_variables[p.name] = std::make_shared<VariableAstNode>(paramName, type);
     }
     auto body = translate(fd->body, ctx);
     return std::make_unique<FrameAstNode>(functionName, std::move(body), std::move(params));

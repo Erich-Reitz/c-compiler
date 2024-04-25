@@ -17,10 +17,10 @@ Stmt::Stmt(std::unique_ptr<AddrAstNode> p_node) : node(std::move(p_node)) {}
 
 Stmt::Stmt(std::unique_ptr<BinaryOpAstNode> p_node) : node(std::move(p_node)) {}
 
-[[nodiscard]] auto Stmt::is_variable_ast_node() -> bool const {
+[[nodiscard]] auto Stmt::is_variable_ast_node() const -> bool {
     return std::holds_alternative<std::unique_ptr<VariableAstNode>>(node);
 }
-[[nodiscard]] auto Stmt::is_deref_write() -> bool const {
+[[nodiscard]] auto Stmt::is_deref_write() const -> bool {
     return std::holds_alternative<std::unique_ptr<DerefWriteAstNode>>(node);
 }
 

@@ -5,7 +5,7 @@
 namespace codegen {
 class Ctx {
    public:
-    std::string Code;
+    std::string Code = "";
 
     void AddInstructionNoIndent(const std::string& i) { Code += (i + "\n"); }
 

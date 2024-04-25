@@ -14,7 +14,7 @@ namespace ast {
 struct Ctx {
     unsigned long counter = 0;
     bool __lvalueContext = false;
-    std::unordered_map<std::string, VariableAstNode*> local_variables;
+    std::unordered_map<std::string, std::shared_ptr<VariableAstNode>> local_variables;
 
     void set_lvalueContext(std::string why, bool value) { __lvalueContext = value; }
 };

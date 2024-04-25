@@ -185,7 +185,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeclarationSpecifier& no
 
 class VariableDirectDeclarator {
    public:
-    std::string name;
+    std::string name = "";
 };
 
 class ParameterDeclaration;

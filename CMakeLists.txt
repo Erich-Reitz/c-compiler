@@ -6,17 +6,11 @@ project(qac VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
 # Include checks for compiler versions
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.1)
         message(FATAL_ERROR "GCC version must be at least 13.1!")
     endif()
-endif()
-
-# Compiler flags
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Wall )
 endif()
 
 # Set the output directory for executables
@@ -46,7 +40,9 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 
 # ---- Add executable ----
 add_executable(${PROJECT_NAME} ${headers} ${sources})
-
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(${PROJECT_NAME} PRIVATE -g -Wall -Wextra -Weffc++ -Wno-unused-parameter)
+endif()
 
 enable_testing()
 

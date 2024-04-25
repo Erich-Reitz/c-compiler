@@ -3,6 +3,7 @@
 #include <concepts>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "ast.hpp"
@@ -16,23 +17,17 @@ concept ContainsTypeDeclaration = requires(T t) {
     { t.GetDeclarator() } -> std::convertible_to<std::optional<st::Declarator>>;
 };
 
-[[nodiscard]] ast::DataType* toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
-    return new ast::DataType("int", 4, nullptr);
+[[nodiscard]] ast::DataType toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
+    return ast::DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
 }
 
-[[nodiscard]] ast::DataType* toDataType(const st::Declarator& decl, ast::DataType* pointsTo) {
-    auto ptr = decl.pointer;
-    if (!ptr) return nullptr;
-    auto levels = ptr.value().level;
-    ast::DataType* result = pointsTo;
-    for (size_t i = 0; i < levels; i++) {
-        result = new ast::DataType("pointer", 8, result);
-    }
-    return result;
+[[nodiscard]] ast::DataType toDataType(const st::Declarator& decl, ast::DataType pointsTo) {
+    return ast::DataType{
+        .name = pointsTo.name, .size = 8, .is_pointer = true, .points_to_size = pointsTo.size};
 }
 
 template <ContainsTypeDeclaration T>
-ast::DataType* toDataType(const T& decl) {
+ast::DataType toDataType(const T& decl) {
     auto datatype = toDataType(decl.declarationSpecifiers);
     std::optional<st::Declarator> opt_declarator = decl.GetDeclarator();
     if (!opt_declarator) {

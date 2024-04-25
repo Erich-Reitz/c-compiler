@@ -45,8 +45,8 @@ struct Stmt : public AstNode {
     [[nodiscard]] const std::string get_variable_name() const;
     [[nodiscard]] const ast::DataType get_variable_type() const;
 
-    [[nodiscard]] auto is_variable_ast_node() -> bool const;
-    [[nodiscard]] auto is_deref_write() -> bool const;
+    [[nodiscard]] auto is_variable_ast_node() const -> bool;
+    [[nodiscard]] auto is_deref_write() const -> bool;
 
     [[nodiscard]] std::string toString() const override;
 };

@@ -117,10 +117,10 @@ auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::DerefReadAstNode* node, F_
     auto variable = std::get<Variable>(src);
     const auto astVariable = ctx.variables.at(variable.name);
     const auto variableType = astVariable->type;
-    assert(variableType.pointsTo != nullptr);
+    assert(variableType.is_pointer);
     const auto depth = node->deref_depth();
 
-    const auto dest = ctx.AddTemp(variableType.pointsTo->size);
+    const auto dest = ctx.AddTemp(variableType.points_to_size);
     const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
     ops.push_back(deref_instruction);
     return dest;

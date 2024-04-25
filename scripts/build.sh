@@ -2,6 +2,7 @@
 
 
 cmake -S . -B build
+ulimit -c unlimited
 cmake --build build
 
 
