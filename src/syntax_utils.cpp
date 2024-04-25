@@ -2,7 +2,9 @@
 
 #include <set>
 
-auto isTypeSpecifier(const Token token) -> bool { return token.type == TokType::TOKEN_T_INT; }
+auto isTypeSpecifier(const Token token) -> bool {
+    return token.type == TokType::TOKEN_T_INT || token.type == TokType::TOKEN_T_VOID;
+}
 
 auto isStmtBegin(const Token t) -> bool {
     std::set<TokType> stmtBeginSet = {

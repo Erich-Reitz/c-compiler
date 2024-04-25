@@ -40,6 +40,7 @@ enum TokType {
     TOKEN_FOR,
     // Builtin types
     TOKEN_T_INT,
+    TOKEN_T_VOID,
     TOKEN_T_INT_LIT,
     TOKEN_T_DOUBLE,
 
