@@ -1,6 +1,5 @@
 ### TODO
 - [x] Refactor `ast.hpp` and `translate.cpp`
-- [ ] Look into better ways to overload a function call on the type a variant holds
 - [ ] Handle variables outside of functions
 - [x] Less than positive and negative test cases
 - [x] Greater than positive and negative test cases
@@ -14,10 +13,14 @@
 - [ ] Implement structs
 - [ ] Handle expressions in the first part of a for loop
     - Looks like `for(a; a < 5; a = a + 1)`
-- [ ] Abstract IR int type into a struct
+- [x] Abstract IR int type into a struct
 - [ ] Add a direct IR instruction for adding to a stack location
 - [ ] Add a direct IR instruction for subtracting from a stack location
 - [ ] Refactor data type for AST data types
 - [ ] Fix `result = result + 1` assembly generation
     - Currently is load, add, store
-
+    - This happens because all bin ops 'create' their destination in `assem.cpp`. Would either need to change there
+        or add a pass to rewrite temp destinations with their actual destinations.
+- [ ] Handle single void parameter `int main(void) {}`
+- [x] Variables without initalizers
+- [ ] Fix std::visit in `auto translate(const st::Expression& expr, Ctx& ctx) -> Stmt`

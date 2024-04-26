@@ -3,14 +3,14 @@
 #include <sstream>
 #include <string>
 
-#include "../include/allocator.hpp"
-#include "../include/assem.hpp"
-#include "../include/codegen.hpp"
-#include "../include/lexer.hpp"
-#include "../include/lower_ir.hpp"
-#include "../include/parser.hpp"
-#include "../include/st.hpp"
-#include "../include/translate.hpp"
+#include "../include/compiler/allocator.hpp"
+#include "../include/compiler/assem.hpp"
+#include "../include/compiler/codegen.hpp"
+#include "../include/compiler/lower_ir.hpp"
+#include "../include/compiler/translate.hpp"
+#include "../include/lexer/lexer.hpp"
+#include "../include/parser/parser.hpp"
+#include "../include/parser/st.hpp"
 
 #define DEBUG 0
 
@@ -56,7 +56,7 @@ void print_lower_ir(const std::vector<target::Frame>& frames, const std::string&
     std::cout << header << std::endl;
     for (const auto& frame : frames) {
         for (const auto& ins : frame.instructions) {
-            std::cout << ins << std::endl;
+            // std::cout << ins << std::endl;
         }
     }
     std::cout << "-----------------" << std::endl;

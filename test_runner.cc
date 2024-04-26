@@ -162,6 +162,15 @@ RUN_TEST_CASE(IntSubtractionInvolvingNegatives, "int_subtraction_involving_negat
 RUN_TEST_CASE(PassVariablesOnStack, "pass_vars_on_stack.c");
 RUN_TEST_CASE(PassVariablesOnStackMoreInvolved, "pass_vars_on_stack_more_involved.c");
 
+// ** Variable without initialization **/
+RUN_TEST_CASE(IntNoInit, "int_var_no_init.c");
+
+// ** Arrays */
+RUN_TEST_CASE(BasicIntArray, "int_arr.c");
+RUN_TEST_CASE(TwoArraysInFunctionReferenceFirst, "int_arr2.c");
+RUN_TEST_CASE(TwoArraysInFunctionReferenceSecond, "int_arr3.c");
+RUN_TEST_CASE(ForLoopArray, "for_loop_arr.c");
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
