@@ -58,8 +58,14 @@ auto translate(const std::shared_ptr<st::UnaryExpression>& expr, Ctx& ctx) -> St
     } else if (expr->type == st::UnaryExpressionType::ADDR) {
         return std::make_shared<AddrAstNode>(std::move(e));
     } else if (expr->type == st::UnaryExpressionType::NEG) {
-        auto zero = std::make_shared<ConstIntAstNode>(0);
-        return std::make_shared<BinaryOpAstNode>(std::move(zero), std::move(e), BinOpKind::Sub);
+        if (std::holds_alternative<std::shared_ptr<st::PrimaryExpression>>(expr->expr)) {
+            auto primary = std::get<std::shared_ptr<st::PrimaryExpression>>(expr->expr);
+            if (primary->type == st::PrimaryExpressionType::INT) {
+                return std::make_shared<ConstIntAstNode>(-primary->value);
+            }
+        }
+        return std::make_shared<BinaryOpAstNode>(std::make_shared<ConstIntAstNode>(0), std::move(e),
+                                                 BinOpKind::Sub);
     }
 
     throw std::runtime_error("translate(const st::UnaryExpression &expr, Ctx &ctx)");

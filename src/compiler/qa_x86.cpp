@@ -131,6 +131,7 @@ bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs) {
     return (lhs.reg == rhs.reg) && (lhs.size == rhs.size);
 }
 
+
 std::optional<VirtualRegister> get_src_register(const Instruction& ins) {
     return std::visit(
         [&](auto&& arg) -> std::optional<VirtualRegister> {
@@ -138,6 +139,12 @@ std::optional<VirtualRegister> get_src_register(const Instruction& ins) {
                 const auto reg = arg.src;
                 if (std::holds_alternative<VirtualRegister>(reg)) {
                     return std::get<VirtualRegister>(reg);
+                }
+                return std::nullopt;
+            } else if constexpr (HasRegisterSrc<decltype(arg.src)>) {
+                const auto stack_location = arg.src;
+                if (std::holds_alternative<VirtualRegister>(arg.src.src)) {
+                    return std::get<VirtualRegister>(arg.src.src);
                 }
                 return std::nullopt;
             }
@@ -157,11 +164,7 @@ std::optional<VirtualRegister> get_dest_register(const Instruction& ins) {
                 return std::nullopt;
             }  else if constexpr (HasRegisterSrc<decltype(arg.dst)>) {
                 const auto stack_location = arg.dst; 
-                if (stack_location.is_computed == false) {
-                    return std::nullopt;
-                }
-                if (std::holds_alternative<VirtualRegister>(arg.dst.src)) {
-                    
+                if (std::holds_alternative<VirtualRegister>(arg.dst.src)) { 
                     return std::get<VirtualRegister>(arg.dst.src);
                 }
                 return std::nullopt;

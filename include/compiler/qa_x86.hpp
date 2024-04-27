@@ -47,10 +47,10 @@ struct VirtualRegister {
 using Register = std::variant<HardcodedRegister, VirtualRegister>;
 
 struct StackLocation {
-    int offset;
+    int offset = 0; 
     bool is_computed = false;
-    Register src;
-    int scale;
+    Register src = {}; 
+    int scale = 0; 
 };
 
 std::ostream& operator<<(std::ostream& os, const StackLocation& loc);
@@ -75,7 +75,7 @@ struct Mov {
 struct LoadI {
     Register dst;
     int value;
-    void *src;
+    void* src = nullptr;
     
 };
 
@@ -92,7 +92,7 @@ struct ZeroExtend {
 struct StoreI {
     StackLocation dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct Store {
@@ -102,50 +102,50 @@ struct Store {
 
 struct JumpGreater {
     std::string label;
-    void* src;
-    void *dst;
+    void* src = nullptr;
+    void* dst = nullptr;
 };
 
 struct JumpLess {
     std::string label;
-    void* src;
-    void *dst;
+    void* src = nullptr;
+    void* dst = nullptr;
 };
 
 struct Jump {
     std::string label;
-    void* src;
-    void *dst;
+    void* src = nullptr;
+    void* dst = nullptr;
 };
 
 struct JumpEq {
     std::string label;
-    void* src;
-    void *dst;
+    void* src = nullptr;
+    void* dst = nullptr;
 };
 
 struct AddI {
     Register dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct AddMI {
     StackLocation dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct SubMI {
     StackLocation dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct SubI {
     Register dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct Add {
@@ -168,39 +168,39 @@ struct CmpI {
     // TODO: not really dest..
     Register dst;
     int value;
-    void* src;
+    void* src = nullptr;
 };
 
 struct SetEAl {
     Register dst;
-    void* src;
+    void* src = nullptr;
 };
 
 struct SetGAl {
     Register dst;
-    void* src;
+    void* src = nullptr;
 };
 
 struct SetNeAl {
     Register dst;
-void* src;
+void* src = nullptr;
     };
 
 struct SetLAl {
     Register dst;
-    void* src;
+    void* src = nullptr;
 };
 
 struct Label {
     std::string name;
-    void* src;
-    void *dst;
+    void* src = nullptr;
+    void* dst = nullptr;
 };
 
 struct Call {
     std::string name;
     Register dst;
-    void* src;
+    void* src = nullptr;
 };
 
 struct Lea {
@@ -220,12 +220,12 @@ struct IndirectStore {
 
 struct PushI {
     int src;
-    void *dst;
+    void* dst = nullptr;
 };
 
 struct Push {
     Register src;
-    void *dst;
+    void* dst = nullptr;
 };
 
 using Instruction =

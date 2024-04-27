@@ -48,10 +48,16 @@ auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::VariableAstNode* node, F_C
     Value *offset = nullptr;
     if (node->offset.has_value()) {
         offset = new Value(std::visit(rhs_visitor, node->offset.value().node));
-
+        return Variable{.name = node->name, .type = node->type, .offset = offset};
     }
 
-    return Variable{.name = node->name, .type = node->type, .offset = offset};
+    if (var.type.is_array) {
+        const ast::DataType pointer_type = {.name = var.type.name, .size = 8, .is_pointer = true, .points_to_size = var.type.points_to_size};
+        return Variable{.name = node->name, .type = pointer_type, .offset = offset};
+    }
+
+    const auto result = Variable{.name = node->name, .type = node->type, .offset = offset}; 
+    return result;
 }
 
 auto gen_ir_for_rhs(std::vector<Operation>& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {

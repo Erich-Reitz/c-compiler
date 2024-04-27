@@ -12,7 +12,7 @@
 #include "../../include/ast/ast.hpp"
 
 namespace target {
-
+bool l_value_ctx = false;
 [[nodiscard]] std::vector<Instruction> _Value_To_Location(Register r_dst, qa_ir::ConstInt v_src,
                                                           Ctx* ctx) {
     return {LoadI{.dst = r_dst, .value = v_src.numerical_value}};
@@ -42,6 +42,23 @@ namespace target {
 [[nodiscard]] std::vector<Instruction> _Value_To_Location(Register r_dst, qa_ir::Variable v_src,
                                                           Ctx* ctx) {
     std::vector<Instruction> result;
+    if (v_src.type.is_array && !v_src.offset ) {
+        const auto lea = Lea{.dst = r_dst, .src = ctx->get_stack_location(v_src, result)};
+        result.push_back(lea);
+        return result;
+    }
+    
+    if (v_src.type.is_pointer && v_src.offset ) {
+        const auto lea = Load{.dst = r_dst, .src = ctx->get_stack_location(v_src, result)};
+        result.push_back(lea);
+        return result;
+    }
+
+    if (v_src.type.is_pointer && !v_src.offset && !l_value_ctx ) {
+        const auto lea = Lea{.dst = r_dst, .src = ctx->get_stack_location(v_src, result)};
+        result.push_back(lea);
+        return result;
+    }
     const auto variableOffset = ctx->get_stack_location(v_src, result);
     result.emplace_back(Load{.dst = r_dst, .src = variableOffset});
     return result;
@@ -55,10 +72,11 @@ namespace target {
 
 [[nodiscard]] std::vector<Instruction> _Value_To_Location(StackLocation s_dst,
                                                           qa_ir::Variable v_src, Ctx* ctx) {
-    const auto reg = ctx->NewRegister(v_src.type.size);
+    const auto sizeOfSource = SizeOf(v_src);
+    const auto reg = ctx->NewRegister(sizeOfSource);
     auto result = std::vector<Instruction>{};
     // move variable to register
-    const auto base_variable = ctx->variable_offset.at(v_src.name);
+    const auto base_variable = ctx->get_stack_location(v_src, result);
     result.push_back(Load{.dst = reg, .src = base_variable});
     // store register to stack
     result.push_back(Store{.dst = s_dst, .src = reg});
@@ -111,8 +129,28 @@ Location Ctx::AllocateNew(qa_ir::Value v, std::vector<Instruction> &instructions
 }
 
 StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, std::vector<Instruction>& instructions) {
-    const auto base = variable_offset.at(v.name);
-    if (v.offset) {
+    if (v.type.is_array && v.offset) {
+            auto base = variable_offset.at(v.name);
+            if (std::holds_alternative<qa_ir::ConstInt>(*v.offset)) {
+                const auto offset = std::get<qa_ir::ConstInt>(*v.offset).numerical_value  * v.type.points_to_size;  
+                return StackLocation{.offset = base.offset - offset, .is_computed = false, .src = {}, .scale = 0};
+            }
+            if (std::holds_alternative<qa_ir::Variable>(*v.offset)) {
+                const auto offsetVariable = std::get<qa_ir::Variable>(*v.offset);
+                const auto offsetVariableOffset = get_stack_location(offsetVariable, instructions);
+                const auto reg = NewRegister(SizeOf(offsetVariable));
+                    
+                instructions.push_back(Load{.dst = reg, .src = offsetVariableOffset});
+                const auto upperreg = NewRegister(8);
+                instructions.push_back(ZeroExtend{.dst = upperreg, .src = reg});
+                return StackLocation{.offset = base.offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
+            }
+
+            throw std::runtime_error("Unsupported offset type");
+    }
+    
+    if (v.type.is_pointer && v.offset) {
+        auto base = variable_offset.at(v.name);
         if (std::holds_alternative<qa_ir::ConstInt>(*v.offset)) {
             const auto offset = std::get<qa_ir::ConstInt>(*v.offset).numerical_value  * v.type.points_to_size;  
             return StackLocation{.offset = base.offset - offset, .is_computed = false, .src = {}, .scale = 0};
@@ -121,16 +159,50 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, std::vector<Inst
             const auto offsetVariable = std::get<qa_ir::Variable>(*v.offset);
             const auto offsetVariableOffset = get_stack_location(offsetVariable, instructions);
             const auto reg = NewRegister(SizeOf(offsetVariable));
-                   
+                
             instructions.push_back(Load{.dst = reg, .src = offsetVariableOffset});
             const auto upperreg = NewRegister(8);
             instructions.push_back(ZeroExtend{.dst = upperreg, .src = reg});
-            return StackLocation{.offset = base.offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
+
+            // issue a lea
+            const auto base_offset = 0; // why: ?
+            const auto offset_reg = NewRegister(8);
+            const auto offset_of_element = StackLocation{.offset = base_offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
+            instructions.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+
+            // move the address pointed to
+            const auto final_reg = NewRegister(8);
+            instructions.push_back(Load{.dst = final_reg, .src = base});
+            instructions.push_back(Add{.dst = final_reg, .src = offset_reg});
+
+            return StackLocation{.offset = 0, .is_computed = true, .src = final_reg, .scale = 1};
         }
+
+        if (std::holds_alternative<qa_ir::Temp>(*v.offset)) {
+            const auto offsetVariable = std::get<qa_ir::Temp>(*v.offset);
+            const auto offsetVariableReg = AllocateNewForTemp(offsetVariable);
+            const auto upperreg = NewRegister(8);
+            instructions.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
+
+            // issue a lea
+            const auto base_offset = 0; // why: ?
+            const auto offset_reg = NewRegister(8);
+            const auto offset_of_element = StackLocation{.offset = base_offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
+            instructions.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+
+            // move the address pointed to
+            const auto final_reg = NewRegister(8);
+            instructions.push_back(Load{.dst = final_reg, .src = base});
+            instructions.push_back(Add{.dst = final_reg, .src = offset_reg});
+
+            return StackLocation{.offset = 0, .is_computed = true, .src = final_reg, .scale = 1};
+        }
+
 
         throw std::runtime_error("Unsupported offset type");
     }
-    return base;
+
+    return variable_offset.at(v.name);
 }
 
 Register Ctx::AllocateNewForTemp(qa_ir::Temp t) {
@@ -143,7 +215,14 @@ Register Ctx::AllocateNewForTemp(qa_ir::Temp t) {
 }
 
 VirtualRegister Ctx::NewRegister(int size) {
-    return VirtualRegister{.id = tempCounter++, .size = size};
+    if (size == 8) {
+        return VirtualRegister{.id = tempCounter++, .size = size};
+    }
+    if (size == 4) {
+        return VirtualRegister{.id = tempCounter++, .size = size};
+    }
+
+    throw std::runtime_error("Unsupported register size");
 }
 
 int Ctx::get_stack_offset() const { return stackOffset; }
@@ -418,8 +497,8 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> std::vector<In
 [[nodiscard]] std::vector<Instruction> LowerInstruction(qa_ir::Call call, Ctx& ctx) {
     std::vector<Instruction> result;
     auto dest = ctx.AllocateNew(call.dst, result);
-    for (auto it = call.args.rbegin(); it != call.args.rend(); ++it) {
-        auto dist = std::distance(call.args.rbegin(), it);
+    for (auto it = call.args.begin(); it != call.args.end(); ++it) {
+        auto dist = std::distance(call.args.begin(), it);
         std::size_t index = static_cast<std::size_t>(dist);
         if (index >= 6) {
             if (std::holds_alternative<qa_ir::ConstInt>(*it)) {
@@ -427,7 +506,8 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> std::vector<In
                 continue;
             }
             if (std::holds_alternative<qa_ir::Variable>(*it)) {
-                const auto reg = ctx.NewRegister(SizeOf(*it));
+                const auto size = SizeOf(*it);
+                const auto reg = ctx.NewRegister(size);
                 const auto variable = std::get<qa_ir::Variable>(*it);
                 const auto variableOffset = ctx.variable_offset.at(variable.name);
                 result.push_back(Load{.dst = reg, .src = variableOffset});
@@ -492,10 +572,12 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> std::vector<In
 [[nodiscard]] auto LowerInstruction(qa_ir::DerefStore deref, Ctx& ctx) {
     std::vector<Instruction> result;
     // variable_dest holds the address of the variable
-    const auto variable_dest = deref.dst;
+     auto variable_dest = deref.dst;
     // move the variable to a register
     const auto tempregister = ctx.NewRegister(8);
+    l_value_ctx = true;
     auto moveInstructions = ctx.toLocation(tempregister, variable_dest);
+    l_value_ctx = false;
     result.insert(result.end(), moveInstructions.begin(), moveInstructions.end());
     // load the value at the address
     const auto src = deref.src;

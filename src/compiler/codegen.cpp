@@ -19,30 +19,36 @@ void MoveInstruction(const target::Mov mov, Ctx& ctx) {
     ctx.AddInstruction("mov " + target::to_asm(mov));
 }
 
-std::string to_asm_special(target::StackLocation sl) {
-       if (sl.is_computed) {
+
+
+std::string to_asm(target::StackLocation sl) {
+      if (sl.is_computed) {
         if (std::holds_alternative<target::VirtualRegister>(sl.src)) {
             throw std::runtime_error("Cannot compute with virtual register");
         }
         const auto base = std::get<target::HardcodedRegister>(sl.src);
         const auto initalOffset = sl.offset;
         const auto scale = sl.scale;
+
+        std::string scale_string = "";
+        if (scale != 1) {
+            scale_string = " * " + std::to_string(scale);
+        }
+
+        if (initalOffset == 0) {
+            // don't return relative to rbp
+            return " [0+" + target::to_asm(base.reg, 8) + scale_string + "]";
+        }
+
         // if we are using it as an offset, then its size is 8.
         // TODO: issue a clear instruction
-        return " [rbp-" + std::to_string(initalOffset) + " + " + target::to_asm(base.reg, 8) + " * " + std::to_string(scale) + "]";
+        return " [rbp-" + std::to_string(initalOffset) + " + " + target::to_asm(base.reg, 8) + scale_string + "]";
     }
 
     if (sl.offset >= 0) {
         return " [rbp - " + std::to_string(sl.offset) + "]";
     }
     return " [rbp + " + std::to_string(-sl.offset) + "]"; 
-}
-
-std::string to_asm(target::StackLocation sl) {
-    if (sl.offset >= 0) {
-        return " [rbp - " + std::to_string(sl.offset) + "]";
-    }
-    return " [rbp + " + std::to_string(-sl.offset) + "]";
 }
 
 void generateASMForInstruction(const target::Instruction& is, Ctx& ctx) {
@@ -66,7 +72,7 @@ void generateASMForInstruction(const target::Instruction& is, Ctx& ctx) {
         const auto store = std::get<target::Store>(is);
         const auto src = std::get<target::HardcodedRegister>(store.src);
         const auto sourcesizeString = src.size == 4 ? std::string("dword") : std::string("qword");
-        ctx.AddInstruction("mov " + sourcesizeString + to_asm_special(store.dst) + ", " +
+        ctx.AddInstruction("mov " + sourcesizeString + to_asm(store.dst) + ", " +
                            target::to_asm(src.reg, src.size));
     } else if (std::holds_alternative<target::Load>(is)) {
         const auto load = std::get<target::Load>(is);
@@ -125,8 +131,7 @@ void generateASMForInstruction(const target::Instruction& is, Ctx& ctx) {
         const auto lea = std::get<target::Lea>(is);
         const auto dst = std::get<target::HardcodedRegister>(lea.dst);
         const auto dstsize = dst.size;
-        ctx.AddInstruction("lea " + target::to_asm(dst.reg, dstsize) + ", [rbp - " +
-                           std::to_string(lea.src.offset) + "]");
+        ctx.AddInstruction("lea " + target::to_asm(dst.reg, dstsize) + ", " + to_asm(lea.src));
     } else if (std::holds_alternative<target::IndirectLoad>(is)) {
         const auto imao = std::get<target::IndirectLoad>(is);
         const auto dst = std::get<target::HardcodedRegister>(imao.dst);

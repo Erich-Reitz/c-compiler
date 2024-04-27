@@ -44,9 +44,11 @@ void print_ir(const std::vector<qa_ir::Frame>& frames) {
     std::cout << "-----------------" << std::endl;
     std::cout << "IR:" << std::endl;
     for (const auto& frame : frames) {
+        std::cout << "Function: " << frame.name << std::endl;
         for (const auto& ins : frame.instructions) {
             std::cout << ins << std::endl;
         }
+        std::cout << "-----------------" << std::endl;
     }
     std::cout << "-----------------" << std::endl;
 }

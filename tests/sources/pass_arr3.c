@@ -1,13 +1,6 @@
-### A C
-
-Toy C compiler to practice C++ and learn about compilers.  Trying to emit instructions at the level of efficiency of `gcc -O0`.
-
-#### Progress
-
-Compiles
-
-```
 // EXPECTED_RETURN: 100
+
+
 void add_hundred_to_all_array_elements(int *arr, int length) {
     for (int i =0; i < length; i = i + 1) {
         arr[i] = arr[i] + 100; 
@@ -26,5 +19,3 @@ int main() {
     } 
     return 0; 
 }
-
-```

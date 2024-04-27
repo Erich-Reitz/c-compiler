@@ -41,12 +41,19 @@ struct AllocatorContext {
     }
 };
 
-auto getFirstUse(const Frame& frame) -> FirstLastUse {
+
+
+auto getVirtualRegisterIDs(const Instruction &instruction) -> std::tuple<std::optional<int>, std::optional<int>> {
+    const auto srcId = get_src_virtual_id_if_present(instruction); 
+    const auto dstId = get_dest_virtual_id_if_present(instruction);
+    return {srcId, dstId};
+}
+
+auto getFirstLastUse(const Frame& frame) -> FirstLastUse {
     std::map<int, int> firstUse = {};
     std::map<int, int> lastUse = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
-        const auto srcId = get_src_virtual_id_if_present(instruction);
-        const auto dstId = get_dest_virtual_id_if_present(instruction);
+        const auto [srcId, dstId] = getVirtualRegisterIDs(instruction);
         for (const auto register_id : {srcId, dstId}) {
             if (register_id.has_value()) {
                 if (firstUse.find(register_id.value()) == firstUse.end()) {
@@ -96,7 +103,7 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
 
 [[nodiscard]] Frame rewrite(const Frame& frame, AllocatorContext& ctx) {
     Frame newFrame = frame;
-    auto [firstUse, lastUse] = getFirstUse(frame);
+    auto [firstUse, lastUse] = getFirstLastUse(frame);
     auto remappedRegisters = remap(newFrame);
     for (const auto& entry : remappedRegisters) {
         const auto prev = entry.first;

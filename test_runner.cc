@@ -135,6 +135,7 @@ RUN_TEST_CASE(ForLoopDecrement, "for_loop_decrement.c");
 // /** Int* pointers  **/
 RUN_TEST_CASE(IntSwap, "int_swap.c");
 RUN_TEST_CASE(IntDerefAddition, "int_deref_addition.c");
+RUN_TEST_CASE(BasicDeref, "ptr_set.c");
 
 // /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
@@ -159,6 +160,8 @@ RUN_TEST_CASE(ComplicatedIfStatement, "complicated_if.c");
 RUN_TEST_CASE(IntSubtractionInvolvingNegatives, "int_subtraction_involving_negative.c");
 
 // /** Parameter Passing  **/
+RUN_TEST_CASE(IntMax, "max.c");
+RUN_TEST_CASE(PtrSet2, "ptr_set_2.c");
 RUN_TEST_CASE(PassVariablesOnStack, "pass_vars_on_stack.c");
 RUN_TEST_CASE(PassVariablesOnStackMoreInvolved, "pass_vars_on_stack_more_involved.c");
 
@@ -170,6 +173,15 @@ RUN_TEST_CASE(BasicIntArray, "int_arr.c");
 RUN_TEST_CASE(TwoArraysInFunctionReferenceFirst, "int_arr2.c");
 RUN_TEST_CASE(TwoArraysInFunctionReferenceSecond, "int_arr3.c");
 RUN_TEST_CASE(ForLoopArray, "for_loop_arr.c");
+RUN_TEST_CASE(FillArrayWithFive, "pass_arr.c");
+RUN_TEST_CASE(FillArrayWithHundred, "pass_arr_2.c");
+RUN_TEST_CASE(FillArrayWithHundredPlusHundred, "pass_arr3.c");
+RUN_TEST_CASE(FromNegativeHundredToZero, "pass_arr4_neg_values.c");
+RUN_TEST_CASE(ArrayPassedButNotMutated, "array_no_mutation.c");
+RUN_TEST_CASE(ArrayGetterBasic, "array_getter_basic.c");
+RUN_TEST_CASE(ArrayGetterAfterPassed, "array_getter_after_passed.c");
+RUN_TEST_CASE(ArrayGetterAfterPassedSimple, "array_getter_after_passed_simple.c");
+RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

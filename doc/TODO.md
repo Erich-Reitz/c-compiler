@@ -3,13 +3,17 @@
 - [ ] Handle variables outside of functions
 - [x] Less than positive and negative test cases
 - [x] Greater than positive and negative test cases
+- [ ] Implement multiplication
+- [ ] Implement division
 - [ ] Implement <=
 - [ ] Implement >=
 - [ ] Implement prefix / postfix increment / decrement
 - [ ] Implement floats
 - [ ] Implement char
 - [ ] Handle return types of functions that aren't int
-- [ ] Implement arrays
+- [x] Implement arrays
+- [ ] Handle arrays decaying to pointers
+- [ ] Implement VLA's
 - [ ] Implement structs
 - [ ] Handle expressions in the first part of a for loop
     - Looks like `for(a; a < 5; a = a + 1)`

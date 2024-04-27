@@ -28,7 +28,8 @@ concept ContainsTypeDeclaration = requires(T t) {
     } else if (directDeclarator.kind == st::DeclaratorKind::ARRAY) {
         const auto info = std::get<st::ArrayDirectDeclarator>(directDeclarator.declarator);
         const auto expression = std::get<std::shared_ptr<st::PrimaryExpression>>(info.size);
-        return ast::DataType{.name = pointsTo.name, .size = pointsTo.size * expression->value, .is_pointer = true, .points_to_size = pointsTo.size};
+        // not a pointer until it decays
+        return ast::DataType{.name = pointsTo.name, .size = pointsTo.size * expression->value, .is_pointer = false, .points_to_size = pointsTo.size, .is_array = true}; 
     } else {
         throw std::runtime_error("Unsupported declarator kind");
     }

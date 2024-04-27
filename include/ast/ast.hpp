@@ -223,7 +223,26 @@ struct ForLoopAstNode : public AstNode {
           forUpdate(std::move(forUpdate)),
           forBody(std::move(forBody)) {}
 
-    [[nodiscard]] auto toString() const -> std::string override { return "for"; }
+    [[nodiscard]] auto toString() const -> std::string override { 
+        std::string result = "for (";
+        if (forInit) {
+            result += forInit->toString();
+        }
+        result += "; ";
+        if (forCondition.has_value()) {
+            result += forCondition.value().toString();
+        }
+        result += "; ";
+        if (forUpdate.has_value()) {
+            result += forUpdate.value().toString();
+        }
+        result += ") {\n";
+        for (const auto& node : forBody) {
+            result += node.toString() + "\n";
+        }
+        result += "}";
+        return result;
+    }
 };
 
 struct TopLevelNode : public AstNode {

@@ -10,5 +10,6 @@ struct DataType {
     int size = 0;
     bool is_pointer = false;
     int points_to_size = 0;
+    bool is_array = false;
 };
 }  // namespace ast
