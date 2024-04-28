@@ -9,7 +9,7 @@
 #include "ast.hpp"
 #include "../parser/st.hpp"
 
-namespace asttraits {
+namespace ast {
 
 template <typename T>
 concept ContainsTypeDeclaration = requires(T t) {
@@ -17,19 +17,20 @@ concept ContainsTypeDeclaration = requires(T t) {
     { t.GetDeclarator() } -> std::convertible_to<std::optional<st::Declarator>>;
 };
 
-[[nodiscard]] ast::DataType toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
-    return ast::DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
+//TODO: use the dss parameter here
+[[nodiscard]] DataType toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
+    return DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
 }
 
-[[nodiscard]] ast::DataType toDataType(const st::Declarator& decl, ast::DataType pointsTo) {
+[[nodiscard]] DataType toDataType(const st::Declarator& decl, DataType pointsTo) {
     const auto directDeclarator = decl.directDeclarator;
     if (directDeclarator.kind == st::DeclaratorKind::VARIABLE) {
-        return ast::DataType{.name = pointsTo.name, .size = 8, .is_pointer = true, .points_to_size = pointsTo.size};
+        return DataType{.name = pointsTo.name, .size = 8, .is_pointer = true, .points_to_size = pointsTo.size};
     } else if (directDeclarator.kind == st::DeclaratorKind::ARRAY) {
         const auto info = std::get<st::ArrayDirectDeclarator>(directDeclarator.declarator);
         const auto expression = std::get<std::shared_ptr<st::PrimaryExpression>>(info.size);
         // not a pointer until it decays
-        return ast::DataType{.name = pointsTo.name, .size = pointsTo.size * expression->value, .is_pointer = false, .points_to_size = pointsTo.size, .is_array = true}; 
+        return DataType{.name = pointsTo.name, .size = pointsTo.size * expression->value, .is_pointer = false, .points_to_size = pointsTo.size, .is_array = true};
     } else {
         throw std::runtime_error("Unsupported declarator kind");
     }
@@ -37,7 +38,7 @@ concept ContainsTypeDeclaration = requires(T t) {
 
 
 template <ContainsTypeDeclaration T>
-ast::DataType toDataType(const T& decl) {
+DataType toDataType(const T& decl) {
     auto datatype = toDataType(decl.declarationSpecifiers);
     std::optional<st::Declarator> opt_declarator = decl.GetDeclarator();
     if (!opt_declarator) {
@@ -50,4 +51,4 @@ ast::DataType toDataType(const T& decl) {
     }
     return datatype;
 }
-}  // namespace asttraits
+}  // namespace ast

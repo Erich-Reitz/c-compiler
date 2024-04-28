@@ -1,5 +1,3 @@
-#include "../../include/ast/Stmt.hpp"
-
 #include "../../include/ast/ast.hpp"
 
 namespace ast {
@@ -52,7 +50,7 @@ const ast::DataType Stmt::get_variable_type() const {
 }
 
 [[nodiscard]] std::string Stmt::toString() const {
-    return std::visit([](const auto& node) { return node->toString(); }, node);
+    return std::visit([](const auto& v_node) { return v_node->toString(); }, node);
 }
 
 [[nodiscard]] auto BodyNode::is_stmt() const -> bool { return std::holds_alternative<Stmt>(node); }

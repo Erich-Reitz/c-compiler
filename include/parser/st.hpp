@@ -252,7 +252,6 @@ inline std::ostream& operator<<(std::ostream& os, const DirectDeclarator& node) 
     } else {
         throw std::runtime_error("Not implemented");
     }
-    return os;
 }
 
 class Declarator {

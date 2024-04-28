@@ -1,17 +1,18 @@
-#include "../../include/compiler/lower_ir.hpp"
-
 #include <concepts>
 #include <functional>
 #include <map>
 #include <optional>
 #include <stdexcept>
-#include <utility>
-#include <variant>
-#include <vector>
 
-#include "../../include/ast/ast.hpp"
+#include <variant>
+
+#include "../../../include/ast/ast.hpp"
+#include "../../../include/compiler/target/lower_ir.hpp"
 
 namespace target {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 bool l_value_ctx = false;
 [[nodiscard]] std::vector<Instruction> _Value_To_Location(Register r_dst, qa_ir::ConstInt v_src,
                                                           Ctx* ctx) {
@@ -264,9 +265,9 @@ std::vector<Instruction> Create_ArthBin_Instruction_Sequence(ast::BinOpKind kind
                                                              Ctx& ctx) {
     static const std::map<ast::BinOpKind, std::function<Instruction(Register, int)>> ops = {
         {ast::BinOpKind::Add,
-         [](Register reg, int value) -> Instruction { return AddI{.dst = reg, .value = value}; }},
+         [](Register v_reg, int v_value) -> Instruction { return AddI{.dst = v_reg, .value = v_value}; }},
         {ast::BinOpKind::Sub,
-         [](Register reg, int value) -> Instruction { return SubI{.dst = reg, .value = value}; }}};
+         [](Register v_reg, int v_value) -> Instruction { return SubI{.dst = v_reg, .value = v_value}; }}};
     auto op_it = ops.find(kind);
     if (op_it == ops.end()) {
         throw std::runtime_error("Unsupported operation kind");
@@ -284,9 +285,9 @@ std::vector<Instruction> Create_ArthBin_Instruction_Sequence(ast::BinOpKind kind
                                                              Ctx& ctx) {
     static const std::map<ast::BinOpKind, std::function<Instruction(Register, Register)>> ops = {
         {ast::BinOpKind::Add,
-         [](Register dst, Register src) -> Instruction { return Add{.dst = dst, .src = src}; }},
+         [](Register v_dst, Register v_src) -> Instruction { return Add{.dst = v_dst, .src = v_src}; }},
         {ast::BinOpKind::Sub,
-         [](Register dst, Register src) -> Instruction { return Sub{.dst = dst, .src = src}; }}};
+         [](Register v_dst, Register v_src) -> Instruction { return Sub{.dst = v_dst, .src = v_src}; }}};
     auto op_it = ops.find(kind);
     if (op_it == ops.end()) {
         throw std::runtime_error("Unsupported operation kind");
@@ -298,27 +299,22 @@ std::vector<Instruction> Create_ArthBin_Instruction_Sequence(ast::BinOpKind kind
     return result;
 }
 
+static const std::map<ast::BinOpKind, std::function<void(std::vector<Instruction>&, Register)>>
+    comparision_ops = {
+        {ast::BinOpKind::Eq, [](std::vector<Instruction>& result, Register newReg) { result.push_back(SetEAl{.dst = newReg}); }},
+        {ast::BinOpKind::Gt, [](std::vector<Instruction>& result, Register newReg) { result.push_back(SetGAl{.dst = newReg}); }},
+        {ast::BinOpKind::Neq, [](std::vector<Instruction>& result, Register newReg) { result.push_back(SetNeAl{.dst = newReg});}},
+        {ast::BinOpKind::Lt, [](std::vector<Instruction>& result, Register newReg) { result.push_back(SetLAl{.dst = newReg}); }},
+    };
+
 std::vector<Instruction> Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg, qa_ir::ConstInt value,
                                                                 Ctx& ctx) {
-    static const std::map<ast::BinOpKind, std::function<void(std::vector<Instruction>&, Register)>>
-        comparisonOps = {
-            {ast::BinOpKind::Eq, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetEAl{.dst = newReg}); }},
-            {ast::BinOpKind::Gt, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetGAl{.dst = newReg}); }},
-            {ast::BinOpKind::Neq,
-             [](std::vector<Instruction>& result, Register newReg) {
-                 result.push_back(SetNeAl{.dst = newReg});
-             }},
-            {ast::BinOpKind::Lt, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetLAl{.dst = newReg}); }},
-        };
     std::vector<Instruction> result = {CmpI{.dst = reg, .value = value.numerical_value}};
     Register newReg = ctx.NewRegister(4);
-    auto op_it = comparisonOps.find(kind);
-    if (op_it != comparisonOps.end()) {
+    auto op_it = comparision_ops.find(kind);
+    if (op_it != comparision_ops.end()) {
         op_it->second(result, newReg);
     } else {
         throw std::runtime_error("Unsupported comparison kind");
@@ -333,23 +329,10 @@ std::vector<Instruction> Create_Comparison_Instruction_Sequence(ast::BinOpKind k
                                                                 std::optional<target::Location> dst,
                                                                 Register reg1, Register reg2,
                                                                 Ctx& ctx) {
-    static const std::map<ast::BinOpKind, std::function<void(std::vector<Instruction>&, Register)>>
-        comparisonOps = {
-            {ast::BinOpKind::Eq, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetEAl{.dst = newReg}); }},
-            {ast::BinOpKind::Gt, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetGAl{.dst = newReg}); }},
-            {ast::BinOpKind::Neq,
-             [](std::vector<Instruction>& result, Register newReg) {
-                 result.push_back(SetNeAl{.dst = newReg});
-             }},
-            {ast::BinOpKind::Lt, [](std::vector<Instruction>& result,
-                                    Register newReg) { result.push_back(SetLAl{.dst = newReg}); }},
-        };
     std::vector<Instruction> result = {Cmp{.dst = reg1, .src = reg2}};
     Register newReg = ctx.NewRegister(4);
-    auto op_it = comparisonOps.find(kind);
-    if (op_it != comparisonOps.end()) {
+    auto op_it = comparision_ops.find(kind);
+    if (op_it != comparision_ops.end()) {
         op_it->second(result, newReg);
     } else {
         throw std::runtime_error("Unsupported comparison kind");
@@ -635,6 +618,7 @@ auto LowerInstruction(qa_ir::Jump arg, Ctx& ctx) -> std::vector<Instruction> {
                                                                         Ctx& ctx) {
     return std::visit([&ctx](auto&& arg) { return LowerInstruction(arg, ctx); }, op);
 }
+#pragma GCC diagnostic pop
 
 [[nodiscard]] std::vector<Frame> LowerIR(const std::vector<qa_ir::Frame>& frames) {
     std::vector<Frame> result;

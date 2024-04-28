@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc <= 1) {
-        fprintf(stderr, "Usage: %s -o <outputfile> <inputfile>\n", argv[0]);
+        fprintf(stderr, "Usage: %s -o <outfile> <input file>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
                 outfile = optarg;
                 break;
             default:
-                fprintf(stderr, "Usage: %s -o <outputfile> <inputfile>\n", argv[0]);
+                fprintf(stderr, "Usage: %s -o <outfile> <input file>\n", argv[0]);
                 return EXIT_FAILURE;
         }
     }

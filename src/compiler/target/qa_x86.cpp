@@ -1,13 +1,10 @@
-#include "../../include/compiler/qa_x86.hpp"
+#include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
+    
 int sixteenByteAlign(int size) { return size % 16 == 0 ? size : size + (16 - (size % 16)); }
 
-[[nodiscard]] std::string to_asm(const Mov& mov) {
-    auto dst = std::get<HardcodedRegister>(mov.dst);
-    auto src = std::get<HardcodedRegister>(mov.src);
-    return to_asm(dst.reg, dst.size) + ", " + to_asm(src.reg, src.size);
-}
+
 
 [[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister {
     if (static_cast<size_t>(idx) >= param_regs.size()) {
@@ -142,7 +139,7 @@ std::optional<VirtualRegister> get_src_register(const Instruction& ins) {
                 }
                 return std::nullopt;
             } else if constexpr (HasRegisterSrc<decltype(arg.src)>) {
-                const auto stack_location = arg.src;
+
                 if (std::holds_alternative<VirtualRegister>(arg.src.src)) {
                     return std::get<VirtualRegister>(arg.src.src);
                 }
@@ -163,8 +160,7 @@ std::optional<VirtualRegister> get_dest_register(const Instruction& ins) {
                 }
                 return std::nullopt;
             }  else if constexpr (HasRegisterSrc<decltype(arg.dst)>) {
-                const auto stack_location = arg.dst; 
-                if (std::holds_alternative<VirtualRegister>(arg.dst.src)) { 
+                if (std::holds_alternative<VirtualRegister>(arg.dst.src)) {
                     return std::get<VirtualRegister>(arg.dst.src);
                 }
                 return std::nullopt;

@@ -16,6 +16,6 @@ namespace ast {
         case ast::BinOpKind::Neq:
             return "!=";
     }
-    return "bin_op_to_string unkown";
+    return "bin_op_to_string unknown";
 }
 }  // namespace ast
