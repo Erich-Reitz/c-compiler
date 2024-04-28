@@ -1,15 +1,7 @@
-#include "../../include/parser/parser.hpp"
-
 #include <source_location>
-#include <exception>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <stdexcept>
 
-#include "../../include/parser/st.hpp"
+#include "../../include/parser/parser.hpp"
 #include "../../include/parser/syntax_utils.hpp"
-#include "../../include/lexer/token.hpp"
 
 #define DEBUG 0
 

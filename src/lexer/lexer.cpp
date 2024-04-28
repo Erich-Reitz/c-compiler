@@ -4,14 +4,9 @@
 
 #include <cassert>
 #include <exception>
-#include <iostream>
 #include <optional>
-#include <stdexcept>
-#include <string>
 #include <unordered_map>
-#include <vector>
 
-#include "../../include/lexer/token.hpp"
 namespace lexer {
 
 static unsigned long current = 0;

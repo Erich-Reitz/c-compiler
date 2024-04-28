@@ -3,8 +3,8 @@
 #include <map>
 #include <string>
 
-#include "assem.hpp"
-#include "qa_ir.hpp"
+#include "../qa_ir/assem.hpp"
+#include "../qa_ir/qa_ir.hpp"
 #include "qa_x86.hpp"
 
 namespace target {
@@ -28,8 +28,17 @@ struct Ctx {
     int stackOffset = 0;
     int stackPassedParameterOffset = 16;
 };
-[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx)
-    -> std::vector<Instruction>;
+
+[[nodiscard]] auto LowerInstruction(qa_ir::Add add, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::Sub sub, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::Call call, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::Ret ret, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpEqual cj, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpNotEqual cj, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpGreater cj, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpGreater cj, Ctx& ctx) -> std::vector<Instruction>;
+[[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> std::vector<Instruction>;
 [[nodiscard]] auto LowerInstruction(qa_ir::LabelDef label, Ctx& ctx) -> std::vector<Instruction>;
+
 [[nodiscard]] std::vector<Frame> LowerIR(const std::vector<qa_ir::Frame>& ops);
 }  // namespace target

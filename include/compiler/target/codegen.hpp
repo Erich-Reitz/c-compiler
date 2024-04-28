@@ -2,8 +2,10 @@
 
 #include <vector>
 
-#include "assem.hpp"
+#include "../qa_ir/assem.hpp"
 
-namespace codegen {
+namespace target {
+
 [[nodiscard]] std::string Generate(const std::vector<target::Frame>& frames);
+
 }

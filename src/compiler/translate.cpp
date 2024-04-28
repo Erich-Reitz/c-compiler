@@ -1,14 +1,7 @@
-
-#include "../../include/compiler/translate.hpp"
-
-#include <iostream>
-#include <memory>
-#include <stdexcept>
-#include <unordered_map>
 #include <utility>
-#include <variant>
 
 #include "../../include/ast/asttraits.hpp"
+#include "../../include/compiler/translate.hpp"
 
 namespace ast {
 
@@ -69,7 +62,6 @@ auto translate(const std::shared_ptr<st::UnaryExpression>& expr, Ctx& ctx) -> St
     }
 
     throw std::runtime_error("translate(const st::UnaryExpression &expr, Ctx &ctx)");
-    std::unreachable();
 }
 
 auto translate(const std::shared_ptr<st::AdditiveExpression>& expr, Ctx& ctx) -> Stmt {
@@ -92,7 +84,7 @@ auto translate(const std::shared_ptr<st::AdditiveExpression>& expr, Ctx& ctx) ->
 auto translate(const std::shared_ptr<st::ForStatement>& stmt, Ctx& ctx) -> Stmt {
     const st::ForDeclaration& init = stmt->init;
     const auto iden = init.initDeclarator.value().declarator.directDeclarator.VariableIden();
-    auto datatype = asttraits::toDataType(init);
+    auto datatype = ast::toDataType(init);
     ctx.local_variables[iden] = std::make_shared<VariableAstNode>(iden, datatype, std::nullopt);
     const auto& expr = init.initDeclarator.value().initializer.value().expr;
     ctx.set_lvalueContext("translate(const std::unique_ptr<st::ForStatement> &stmt, Ctx &ctx)",
@@ -182,7 +174,7 @@ auto translate(const std::shared_ptr<st::SelectionStatement>& stmt, Ctx& ctx) ->
 [[nodiscard]] auto translate(const st::Declaration& decl, Ctx& ctx)
     -> std::shared_ptr<MoveAstNode> {
     const auto iden = decl.initDeclarator.value().declarator.directDeclarator.VariableIden();
-    auto datatype = asttraits::toDataType(decl);
+    auto datatype = ast::toDataType(decl);
     const auto var = std::make_shared<VariableAstNode>(iden, datatype, std::nullopt);
     ctx.local_variables[iden] = var;
 
@@ -204,7 +196,7 @@ auto translate(const std::shared_ptr<st::SelectionStatement>& stmt, Ctx& ctx) ->
     std::vector<FrameParam> result;
     for (const auto& p : params.params) {
         const auto name = p.Name();
-        const auto type = asttraits::toDataType(p);
+        const auto type = ast::toDataType(p);
         const auto fp = FrameParam{
             .name = name,
             .type = type,

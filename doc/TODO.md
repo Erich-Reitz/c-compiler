@@ -1,23 +1,21 @@
 ### TODO
-- [x] Refactor `ast.hpp` and `translate.cpp`
+
+### Now
+- [ ] Implement floats
+
+### Later
 - [ ] Handle variables outside of functions
-- [x] Less than positive and negative test cases
-- [x] Greater than positive and negative test cases
 - [ ] Implement multiplication
 - [ ] Implement division
 - [ ] Implement <=
 - [ ] Implement >=
 - [ ] Implement prefix / postfix increment / decrement
-- [ ] Implement floats
 - [ ] Implement char
 - [ ] Handle return types of functions that aren't int
-- [x] Implement arrays
-- [ ] Handle arrays decaying to pointers
 - [ ] Implement VLA's
 - [ ] Implement structs
 - [ ] Handle expressions in the first part of a for loop
     - Looks like `for(a; a < 5; a = a + 1)`
-- [x] Abstract IR int type into a struct
 - [ ] Add a direct IR instruction for adding to a stack location
 - [ ] Add a direct IR instruction for subtracting from a stack location
 - [ ] Refactor data type for AST data types
@@ -26,5 +24,4 @@
     - This happens because all bin ops 'create' their destination in `assem.cpp`. Would either need to change there
         or add a pass to rewrite temp destinations with their actual destinations.
 - [ ] Handle single void parameter `int main(void) {}`
-- [x] Variables without initalizers
 - [ ] Fix std::visit in `auto translate(const st::Expression& expr, Ctx& ctx) -> Stmt`

@@ -1,16 +1,4 @@
-#include "../../include/compiler/allocator.hpp"
-
-#include <concepts>
-#include <map>
-#include <optional>
-#include <ranges>
-#include <set>
-#include <stdexcept>
-#include <unordered_map>
-#include <variant>
-#include <vector>
-
-#include "../../include/compiler/qa_x86.hpp"
+#include "../../../include/compiler/target/allocator.hpp"
 
 namespace target {
 

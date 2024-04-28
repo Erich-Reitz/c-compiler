@@ -70,7 +70,6 @@ struct Mov {
 
 
 
-[[nodiscard]] std::string to_asm(const Mov& mov);
 
 struct LoadI {
     Register dst;
