@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-cmake -S . -B build
+cmake -D CMAKE_CXX_COMPILER=g++-13 -S . -B build
 ulimit -c unlimited
 cmake --build build
 
