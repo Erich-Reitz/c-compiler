@@ -44,6 +44,7 @@ enum TokType {
     TOKEN_T_INT,
     TOKEN_T_VOID,
     TOKEN_T_INT_LIT,
+    TOKEN_T_FLOAT,
     TOKEN_T_DOUBLE,
 
     TOKEN_FEOF

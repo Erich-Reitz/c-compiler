@@ -10,6 +10,10 @@ auto translate(const std::shared_ptr<st::PrimaryExpression>& expr, Ctx& ctx) -> 
     if (expr->type == st::PrimaryExpressionType::INT) {
         return std::make_shared<ConstIntAstNode>(expr->value);
     }
+    else if (expr->type == st::PrimaryExpressionType::FLOAT) {
+        return std::make_shared<ConstFloatNode>(expr->f_value);
+    }
+
     if (expr->type == st::PrimaryExpressionType::IDEN) {
         const auto iden = expr->idenValue;
         if (ctx.local_variables.find(iden) != ctx.local_variables.end()) {

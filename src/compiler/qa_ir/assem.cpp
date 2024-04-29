@@ -45,7 +45,9 @@ using op_list = std::vector<Operation>;
 
 [[nodiscard]] auto gen_cond(op_list &ops, ast::MoveAstNode* node, F_Ctx& ctx, Label true_label, Label false_label) -> CondJ;
 
+[[nodiscard]] auto gen_cond(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx, Label true_label, Label false_label) -> CondJ {
 
+}
 
 
 
@@ -54,6 +56,10 @@ auto gen_stmt(op_list &ops, ast::JumpAstNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list &ops, ast::IfNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list &ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list &ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void;
+auto gen_stmt(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> void  {
+    throw std::runtime_error(
+        "gen_stmt(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx)");
+};
 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value; 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::JumpAstNode* node, F_Ctx& ctx) -> Value; 
@@ -67,6 +73,10 @@ auto gen_stmt(op_list &ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void;
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value; 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value; 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value; 
+[[nodiscard]] auto gen_rhs(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> Value {
+    throw std::runtime_error(
+        "gen_rhs(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx)");
+}
 
 auto munch_stmt(op_list &ops, ast::BodyNode& node, F_Ctx& ctx) -> void;
 
@@ -191,16 +201,30 @@ auto gen_rhs(op_list &ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value {
     };
 
     auto src = std::visit(rhs_visitor, node->base_expr.node);
-    auto variable = std::get<Variable>(src);
-    const auto astVariable = ctx.variables.at(variable.name);
-    const auto variableType = astVariable.type;
-    assert(variableType.is_pointer);
-    const auto depth = node->deref_depth();
+    if (std::holds_alternative<Variable>(src)) {
+        const auto variable = std::get<Variable>(src);
+        const auto astVariable = ctx.variables.at(variable.name);
+        const auto variableType = astVariable.type;
+        assert(variableType.is_pointer);
+        const auto depth = node->deref_depth();
 
-    const auto dest = ctx.AddTemp(variableType.points_to_size);
-    const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
-    ops.push_back(deref_instruction);
-    return dest;
+        const auto dest = ctx.AddTemp(variableType.points_to_size);
+        const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
+        ops.push_back(deref_instruction);
+        return dest;
+    }
+
+    if (std::holds_alternative<Temp>(src)) {
+        const auto temp = std::get<Temp>(src);
+        const auto depth = node->deref_depth();
+        //todo: fix the size on this
+        const auto dest = ctx.AddTemp(4);
+        const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
+        ops.push_back(deref_instruction);    
+        return dest;
+    
+    }
+    throw std::runtime_error("Unsupported node type.");
 }
 
 

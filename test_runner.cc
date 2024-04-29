@@ -136,6 +136,7 @@ RUN_TEST_CASE(ForLoopDecrement, "for_loop_decrement.c");
 RUN_TEST_CASE(IntSwap, "int_swap.c");
 RUN_TEST_CASE(IntDerefAddition, "int_deref_addition.c");
 RUN_TEST_CASE(BasicDeref, "ptr_set.c");
+// RUN_TEST_CASE(PointerArthBasic, "ptr_lhs_addition.c");
 
 // /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
@@ -182,6 +183,9 @@ RUN_TEST_CASE(ArrayGetterBasic, "array_getter_basic.c");
 RUN_TEST_CASE(ArrayGetterAfterPassed, "array_getter_after_passed.c");
 RUN_TEST_CASE(ArrayGetterAfterPassedSimple, "array_getter_after_passed_simple.c");
 RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
+
+/** Floats */
+RUN_TEST_CASE(FloatBasic, "float_basic.c");
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

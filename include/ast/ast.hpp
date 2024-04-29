@@ -32,6 +32,16 @@ struct ConstIntAstNode : public AstNode {
     [[nodiscard]] auto toString() const -> std::string override { return std::to_string(value); }
 };
 
+struct ConstFloatNode : public AstNode {
+   public:
+    float value;
+
+    explicit ConstFloatNode(float p_value) : value(p_value) {}
+
+    [[nodiscard]] auto toString() const -> std::string override { return std::to_string(value); }
+};
+
+
 struct ReturnAstNode : public AstNode {
    public:
     Stmt expr;
@@ -174,11 +184,13 @@ struct VariableAstNode : public AstNode {
     explicit VariableAstNode(const std::string& p_name, DataType p_type, std::optional<Stmt> p_offset)
         : name(p_name), type(p_type), offset(std::move(p_offset)) {}
     [[nodiscard]] auto toString() const -> std::string override { 
+
+        const auto type_description = type.name;
         if (offset.has_value()) {
-            return name + "[" + offset.value().toString() + "]";
+            return name + " : " + type_description + " " + "[" + offset.value().toString() + "]";
         }
         
-        return name;
+        return name + " : " + type_description;
     }
 }; 
 

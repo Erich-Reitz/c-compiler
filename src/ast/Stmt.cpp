@@ -12,6 +12,7 @@ Stmt::Stmt(std::shared_ptr<ConstIntAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<VariableAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<DerefReadAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<AddrAstNode> p_node) : node(std::move(p_node)) {}
+Stmt::Stmt(std::shared_ptr<ConstFloatNode> p_node) : node(std::move(p_node)) {}
 
 Stmt::Stmt(std::shared_ptr<BinaryOpAstNode> p_node) : node(std::move(p_node)) {}
 

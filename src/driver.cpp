@@ -10,7 +10,7 @@
 #include "../include/lexer/lexer.hpp"
 #include "../include/parser/parser.hpp"
 
-#define DEBUG 0
+#define DEBUG 1
 
 [[nodiscard]] const std::string readfile(const char* sourcefile) {
     std::ifstream inFile;

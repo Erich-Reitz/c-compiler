@@ -23,14 +23,18 @@ using Expression = std::variant<std::shared_ptr<PrimaryExpression>, std::shared_
 
 inline std::ostream& operator<<(std::ostream& os, const Expression& node);
 
-enum class PrimaryExpressionType { INT, IDEN };
+enum class PrimaryExpressionType { INT, FLOAT, IDEN };
 
 class PrimaryExpression {
    public:
     PrimaryExpression(int p_value)
-        : type(PrimaryExpressionType::INT), value(p_value), idenValue("") {}
+        : type(PrimaryExpressionType::INT), value(p_value), f_value(0.0), idenValue("") {}
+
+    PrimaryExpression(float p_value)
+        : type(PrimaryExpressionType::FLOAT), value(0),  f_value(p_value), idenValue("") {}
+
     PrimaryExpression(std::string p_iden_value)
-        : type(PrimaryExpressionType::IDEN), value(0), idenValue(p_iden_value) {}
+        : type(PrimaryExpressionType::IDEN), value(0), f_value(0.0),  idenValue(p_iden_value) {}
 
     std::ostream& print(std::ostream& os) {
         if (type == PrimaryExpressionType::INT) {
@@ -43,6 +47,8 @@ class PrimaryExpression {
 
     PrimaryExpressionType type;
     int value;
+
+    float f_value;
     std::string idenValue;
 };
 
@@ -172,7 +178,7 @@ inline std::ostream& operator<<(std::ostream& os, const PrimaryExpression& node)
 
 class TypeSpecifier {
    public:
-    enum class Type { INT, DOUBLE, IDEN };
+    enum class Type { INT, DOUBLE, IDEN , FLOAT };
     Type type;
     std::string iden;
 };
@@ -420,7 +426,7 @@ class Statement {
     explicit Statement(
         std::variant<std::shared_ptr<ExpressionStatement>, std::shared_ptr<ReturnStatement>,
                      std::shared_ptr<SelectionStatement>, std::shared_ptr<ForStatement>>
-            stmt);
+            p_stmt);
 
     explicit Statement(std::shared_ptr<ExpressionStatement> node);
 

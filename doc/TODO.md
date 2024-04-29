@@ -2,6 +2,7 @@
 
 ### Now
 - [ ] Implement floats
+- [ ] Implement *(arr + x) dereference
 
 ### Later
 - [ ] Handle variables outside of functions

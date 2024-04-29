@@ -19,6 +19,13 @@ concept ContainsTypeDeclaration = requires(T t) {
 
 //TODO: use the dss parameter here
 [[nodiscard]] DataType toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
+    for (const auto& ds : dss) {
+        if (ds.typespecifier.type == st::TypeSpecifier::Type::INT) {
+            return DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
+        }else if (ds.typespecifier.type == st::TypeSpecifier::Type::FLOAT) {
+            return DataType{.name = "float", .size = 4, .is_pointer = false, .points_to_size = 0};
+        }
+    }
     return DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
 }
 
