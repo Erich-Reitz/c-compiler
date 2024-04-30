@@ -15,7 +15,7 @@ bool operator<(const target::HardcodedRegister& lhs, const target::HardcodedRegi
 }
 
 std::ostream& operator<<(std::ostream& os, const target::HardcodedRegister& reg) {
-    os << target::to_asm(reg.reg, reg.size);
+    os << target::register_to_asm(reg); 
     return os;
 }
 

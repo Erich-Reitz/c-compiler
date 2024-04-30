@@ -13,55 +13,14 @@ int sixteenByteAlign(int size) { return size % 16 == 0 ? size : size + (16 - (si
     return HardcodedRegister{.reg = param_regs[idx], .size = size};
 }
 
-std::ostream& operator<<(std::ostream& os, BaseRegister reg) {
-    switch (reg) {
-        case BaseRegister::AX:
-            os << "ax";
-            break;
-        case BaseRegister::BX:
-            os << "bx";
-            break;
-        case BaseRegister::CX:
-            os << "cx";
-            break;
-        case BaseRegister::DX:
-            os << "dx";
-            break;
-        case BaseRegister::SI:
-            os << "si";
-            break;
-        case BaseRegister::DI:
-            os << "di";
-            break;
-        case BaseRegister::R8:
-            os << "r8";
-            break;
-        case BaseRegister::R9:
-            os << "r9";
-            break;
-        case BaseRegister::R10:
-            os << "r10";
-            break;
-        case BaseRegister::R11:
-            os << "r11";
-            break;
-        case BaseRegister::R12:
-            os << "r12";
-            break;
-        case BaseRegister::R13:
-            os << "r13";
-            break;
-        case BaseRegister::R14:
-            os << "r14";
-            break;
-        case BaseRegister::R15:
-            os << "r15";
-            break;
-    }
-    return os;
-}
 
-[[nodiscard]] std::string to_asm(HardcodedRegister reg) {
+
+std::string register_to_asm(Register v_reg) {
+    if (std::holds_alternative<VirtualRegister>(v_reg)) {
+        throw std::runtime_error("cannot convert VirtualRegister to asm"); 
+    }
+    const auto reg = std::get<HardcodedRegister>(v_reg); 
+
     const auto base = reg.reg;
     const auto size = reg.size;
     switch (base) {
@@ -98,22 +57,41 @@ std::ostream& operator<<(std::ostream& os, BaseRegister reg) {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, const StackLocation& loc) {
-    os << "rbp - " << loc.offset;
-    return os;
+std::string stack_location_at_asm(target::StackLocation sl) {
+      if (sl.is_computed) {
+        if (std::holds_alternative<target::VirtualRegister>(sl.src)) {
+            throw std::runtime_error("Cannot compute with virtual register");
+        }
+        const auto base = std::get<target::HardcodedRegister>(sl.src);
+        const auto initalOffset = sl.offset;
+        const auto scale = sl.scale;
+
+        std::string scale_string = "";
+        if (scale != 1) {
+            scale_string = " * " + std::to_string(scale);
+        }
+        const auto base_register = HardcodedRegister{.reg = base.reg, .size = 8}; 
+        if (initalOffset == 0) {
+            // don't return relative to rbp
+            //TODO: i dunno
+            
+
+            return " [0+" + register_to_asm(base_register) + scale_string + "]";
+        }
+
+        // if we are using it as an offset, then its size is 8.
+        // TODO: issue a clear instruction
+        return " [rbp-" + std::to_string(initalOffset) + " + " + register_to_asm(base_register) + scale_string + "]";
+    }
+
+    if (sl.offset >= 0) {
+        return " [rbp - " + std::to_string(sl.offset) + "]";
+    }
+    return " [rbp + " + std::to_string(-sl.offset) + "]"; 
 }
 
-std::ostream& operator<<(std::ostream& os, const Register& reg) {
-    if (std::holds_alternative<HardcodedRegister>(reg)) {
-        const auto hardcoded = std::get<HardcodedRegister>(reg);
-        os << to_asm(hardcoded.reg, hardcoded.size);
-    }
-    if (std::holds_alternative<VirtualRegister>(reg)) {
-        const auto virtual_reg = std::get<VirtualRegister>(reg);
-        os << "v" << virtual_reg.id;
-    }
-    return os;
-}
+
+
 
 bool operator<(const Register& lhs, const Register& rhs) {
     if (std::holds_alternative<HardcodedRegister>(lhs) &&
