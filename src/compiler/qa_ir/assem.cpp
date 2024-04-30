@@ -73,9 +73,9 @@ auto gen_stmt(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> void  {
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value; 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value; 
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value; 
+
 [[nodiscard]] auto gen_rhs(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> Value {
-    throw std::runtime_error(
-        "gen_rhs(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx)");
+    return Immediate<float>{.numerical_value = node->value }; 
 }
 
 auto munch_stmt(op_list &ops, ast::BodyNode& node, F_Ctx& ctx) -> void;
@@ -180,7 +180,7 @@ auto gen_rhs(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
 }
 
 auto gen_rhs( op_list &ops, ast::ConstIntAstNode* node,  F_Ctx& ctx) -> Value {
-    return ConstInt{.numerical_value = node->value};
+    return Immediate<int>{.numerical_value = node->value};
 }
 
 auto gen_rhs(op_list &ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value {

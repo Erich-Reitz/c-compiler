@@ -193,6 +193,8 @@ void generateASMForInstruction(const Instruction& is, CodeGenContext& ctx) {
         const auto src = std::get<HardcodedRegister>(zeroExtend.src);
         ctx.AddInstruction("movsx " + to_asm(dst.reg, dst.size) + ", " +
                            to_asm(src.reg, src.size));
+    } else if (std::holds_alternative<LoadF>) {
+        ctx.AddInstruction("movss " + )
     }
     else {
         throw std::runtime_error("Unsupported instruction type" + std::to_string(is.index()));

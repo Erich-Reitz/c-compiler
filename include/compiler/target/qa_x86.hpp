@@ -80,8 +80,12 @@ struct LoadI  {
     Register dst;
     int value;
     void* src = nullptr;
-    
-    [[nodiscard]] auto to_asm() const -> std::string {}; 
+};
+
+struct LoadF {
+    Register dst;
+    float value;
+    void* src = nullptr;
 };
 
 struct Load {
@@ -99,6 +103,13 @@ struct StoreI {
     int value;
     void* src = nullptr;
 };
+
+struct StoreF {
+    StackLocation dst;
+    float value;
+    void* src = nullptr;
+};
+
 
 struct Store {
     StackLocation dst;
@@ -176,6 +187,13 @@ struct CmpI {
     void* src = nullptr;
 };
 
+struct CmpF {
+    // TODO: not really dest..
+    Register dst;
+    float value;
+    void* src = nullptr;
+};
+
 struct SetEAl {
     Register dst;
     void* src = nullptr;
@@ -233,10 +251,9 @@ struct Push {
     void* dst = nullptr;
 };
 
-using Instruction =
-    std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, AddMI, SubMI, Cmp,
+using Instruction = std::variant<Mov, LoadI, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, AddMI, SubMI, Cmp,
                  CmpI, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend>;
+                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend, LoadF, StoreF, CmpF>;
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);
 std::optional<int> get_dest_virtual_id_if_present(const Instruction& ins);

@@ -13,7 +13,14 @@ namespace qa_ir {
 struct Temp; 
 struct Variable;
 struct ConstInt;
-using Value = std::variant<Temp, target::HardcodedRegister, Variable, ConstInt>;
+
+template<typename T>
+struct Immediate {
+    T numerical_value;
+};
+
+
+using Value = std::variant<Temp, target::HardcodedRegister, Variable, Immediate<int>, Immediate<float>>;
 
 struct Variable {
     std::string name = "";
@@ -26,9 +33,6 @@ struct Temp {
     int size;
 };
 
-struct ConstInt {
-    int numerical_value;
-};
 
 
 

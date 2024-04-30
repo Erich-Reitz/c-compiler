@@ -31,10 +31,10 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
             os << ", offset=" << *var.offset ;
         }
         os << "}";
-    } else if (std::holds_alternative<ConstInt>(v)) {
-        os << std::get<ConstInt>(v).numerical_value;
-    } else {
-        throw std::runtime_error("Unknown value type");
+    } else if (std::holds_alternative<Immediate<int>>(v)) {
+        os << std::get<Immediate<int>>(v).numerical_value;
+    } else if (std::holds_alternative<Immediate<float>>(v)) {
+        os << std::get<Immediate<float>>(v).numerical_value;
     }
     return os;
 }
@@ -51,7 +51,7 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
         }
 
         return std::get<Variable>(v).type.size; 
-    } else if (std::holds_alternative<ConstInt>(v)) {
+    } else if (std::holds_alternative<Immediate<int>>(v)) {
         return 4;
     } else {
         throw std::runtime_error("Unknown value type");
