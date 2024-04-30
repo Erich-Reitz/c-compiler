@@ -61,8 +61,10 @@ std::ostream& operator<<(std::ostream& os, BaseRegister reg) {
     return os;
 }
 
-[[nodiscard]] std::string to_asm(BaseRegister reg, int size) {
-    switch (reg) {
+[[nodiscard]] std::string to_asm(HardcodedRegister reg) {
+    const auto base = reg.reg;
+    const auto size = reg.size;
+    switch (base) {
         case BaseRegister::AX:
             return size == 4 ? "eax" : "rax";
         case BaseRegister::BX:

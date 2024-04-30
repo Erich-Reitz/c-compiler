@@ -36,7 +36,7 @@ inline const std::vector<BaseRegister> general_regs = {
     BaseRegister::AX,  BaseRegister::BX,  BaseRegister::R10, BaseRegister::R11,
     BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15};
 
-[[nodiscard]] std::string to_asm(BaseRegister reg, int size);
+[[nodiscard]] std::string to_asm(HardcodedRegister reg);
 
 bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
@@ -71,11 +71,17 @@ struct Mov {
 
 
 
-struct LoadI {
+template<typename T>
+concept HasToAsmMethod = requires(T t) {
+    { t.to_asm() } -> std::convertible_to<std::string>;
+};
+
+struct LoadI  {
     Register dst;
     int value;
     void* src = nullptr;
     
+    [[nodiscard]] auto to_asm() const -> std::string {}; 
 };
 
 struct Load {
