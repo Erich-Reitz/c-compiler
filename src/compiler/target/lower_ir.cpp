@@ -17,23 +17,18 @@ bool l_value_ctx = false;
 
 using ins_list = std::vector<Instruction> ; 
 
-[[nodiscard]] ins_list _Value_To_Location(Register r_dst, qa_ir::Immediate<int> v_src,
+template <typename ImmediateType>
+[[nodiscard]] ins_list _Value_To_Location(Register r_dst, qa_ir::Immediate<ImmediateType> v_src,
                                                           Ctx* ctx) {
-    return {LoadI{.dst = r_dst, .value = v_src.numerical_value}};
+    return {ImmediateLoad<ImmediateType>{.dst = r_dst, .value = v_src.numerical_value}};
 }
 
-[[nodiscard]] ins_list _Value_To_Location(Register r_dst, qa_ir::Immediate<float> v_src,
-                                                          Ctx* ctx) {
-    return {LoadF{.dst = r_dst, .value = v_src.numerical_value}};
+
+template <typename ImmediateType>
+[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<ImmediateType> v_src, Ctx* ctx) {
+    return {StoreImmediate<ImmediateType>{.dst = l_dest, .value = v_src.numerical_value}};
 }
 
-[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<int> v_src, Ctx* ctx) {
-    return {StoreI{.dst = l_dest, .value = v_src.numerical_value}};
-}
-
-[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<float> v_src, Ctx* ctx) {
-    return {StoreF{.dst = l_dest, .value = v_src.numerical_value}};
-}
 
 [[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest, qa_ir::Temp t_src,
                                                           Ctx* ctx) {
@@ -330,7 +325,7 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg,  qa_ir::Immediate<float> value,
                                                                 Ctx& ctx) {
-    ins_list result = {CmpF{.dst = reg, .value = value.numerical_value}};
+    ins_list result = {CmpImmediate<float>{.dst = reg, .value = value.numerical_value}};
     Register newReg = ctx.NewRegister(4);
     auto op_it = comparision_ops.find(kind);
     if (op_it != comparision_ops.end()) {
@@ -348,7 +343,7 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg,  qa_ir::Immediate<int> value,
                                                                 Ctx& ctx) {
-    ins_list result = {CmpI{.dst = reg, .value = value.numerical_value}};
+    ins_list result = {CmpImmediate<int>{.dst = reg, .value = value.numerical_value}};
     Register newReg = ctx.NewRegister(4);
     auto op_it = comparision_ops.find(kind);
     if (op_it != comparision_ops.end()) {
@@ -448,14 +443,14 @@ ins_list InstructionForArth(ast::BinOpKind kind,
     return result;
 }
 
-template <typename RightType>
+template <typename RightType, typename ImmediateType>
     requires(qa_ir::IsIRLocation<RightType> || qa_ir::IsRegister<RightType>)
 ins_list InstructionForArth(ast::BinOpKind kind,
                                             std::optional<target::Location> dst,
-                                             qa_ir::Immediate<int> value, RightType right, Ctx& ctx) {
+                                             qa_ir::Immediate<ImmediateType> value, RightType right, Ctx& ctx) {
 
     const target::Register result_reg = ctx.NewRegister(4);
-    ins_list result = {LoadI{.dst = result_reg, .value = value.numerical_value}};
+    ins_list result = {ImmediateLoad<ImmediateType>{.dst = result_reg, .value = value.numerical_value}};
     auto [rhs_reg, move_to_rhs_instructions] = ensureRegister(right, ctx);
     std::ranges::copy(move_to_rhs_instructions, std::back_inserter(result));
     const auto rest_instructions = Create_Arth_Instruction(kind, dst, result_reg, rhs_reg, ctx);
@@ -470,7 +465,7 @@ ins_list InstructionForArth(ast::BinOpKind kind,
                                              qa_ir::Immediate<float> value, RightType right, Ctx& ctx) {
 
     const target::Register result_reg = ctx.NewRegister(4);
-    ins_list result = {LoadF{.dst = result_reg, .value = value.numerical_value}};
+    ins_list result = {ImmediateLoad<float>{.dst = result_reg, .value = value.numerical_value}};
     auto [rhs_reg, move_to_rhs_instructions] = ensureRegister(right, ctx);
     std::ranges::copy(move_to_rhs_instructions, std::back_inserter(result));
     const auto rest_instructions = Create_Arth_Instruction(kind, dst, result_reg, rhs_reg, ctx);
@@ -482,8 +477,8 @@ ins_list InstructionForArth(ast::BinOpKind kind,
 ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location> dst, qa_ir::Immediate<float> left,  qa_ir::Immediate<float> right, Ctx& ctx) {
     auto result_reg = ctx.NewRegister(4);
     auto src_reg = ctx.NewRegister(4);
-    ins_list result = {LoadF{.dst = result_reg, .value = left.numerical_value},
-                                       LoadF{.dst = src_reg, .value = right.numerical_value}};
+    ins_list result = {ImmediateLoad<float>{.dst = result_reg, .value = left.numerical_value},
+                                       ImmediateLoad<float>{.dst = src_reg, .value = right.numerical_value}};
     const auto rest_instructions = InstructionForArth(kind, dst, result_reg, src_reg, ctx);
     std::ranges::copy(rest_instructions, std::back_inserter(result));
     return result;
@@ -492,8 +487,8 @@ ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location
 ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location> dst, qa_ir::Immediate<int> left,  qa_ir::Immediate<int> right, Ctx& ctx) {
     auto result_reg = ctx.NewRegister(4);
     auto src_reg = ctx.NewRegister(4);
-    ins_list result = {LoadI{.dst = result_reg, .value = left.numerical_value},
-                                       LoadI{.dst = src_reg, .value = right.numerical_value}};
+    ins_list result = {ImmediateLoad<int>{.dst = result_reg, .value = left.numerical_value},
+                                       ImmediateLoad<int>{.dst = src_reg, .value = right.numerical_value}};
     const auto rest_instructions = InstructionForArth(kind, dst, result_reg, src_reg, ctx);
     std::ranges::copy(rest_instructions, std::back_inserter(result));
     return result;

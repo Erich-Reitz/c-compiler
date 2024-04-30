@@ -34,8 +34,6 @@ struct Temp {
 };
 
 
-
-
 std::ostream& operator<<(std::ostream& os, const Value& v);
 
 
