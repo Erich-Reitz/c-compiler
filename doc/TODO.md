@@ -1,8 +1,10 @@
 ### TODO
 
 ### Now
-- [ ] Implement floats
 - [ ] Implement *(arr + x) dereference
+- Float equality / not equal operations
+- More float tests
+
 
 ### Later
 - [ ] Compile time -- real	0m30.827s
