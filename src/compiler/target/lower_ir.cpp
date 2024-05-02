@@ -351,7 +351,6 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
     ins_list result = {ImmediateLoad<float>{.dst = intermediate_reg, .value = value.numerical_value}};        
     if (kind == ast::BinOpKind::Lt) {
          result.push_back(CmpF{.dst = intermediate_reg, .src = reg});
-        
     }                                                                 else {
        result.push_back(CmpF{.dst = reg, .src = intermediate_reg});
     }
@@ -390,8 +389,27 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg1, Register reg2,
                                                                 Ctx& ctx) {
-    ins_list result = {Cmp{.dst = reg1, .src = reg2}};
-    Register newReg = ctx.NewIntegerRegister(4);
+    ins_list result;
+    if (is_float_register(reg1) && is_float_register(reg2)) {
+        if (kind == ast::BinOpKind::Lt) {
+            result.push_back(CmpF{.dst = reg2, .src = reg1});
+        }  else {
+            result.push_back(CmpF{.dst = reg1, .src = reg2});
+        }
+            Register newReg = ctx.NewIntegerRegister(4);
+    auto op_it = comparision_float_ops.find(kind);
+    if (op_it != comparision_float_ops.end()) {
+        op_it->second(result, newReg);
+    } else {
+        throw std::runtime_error("Unsupported comparison kind");
+    }
+    if (dst.has_value()) {
+        result.push_back(Register_To_Location(dst.value(), newReg, ctx));
+    }
+    return result;
+    } else {
+        result.push_back(Cmp{.dst = reg1, .src = reg2});
+            Register newReg = ctx.NewIntegerRegister(4);
     auto op_it = comparision_int_ops.find(kind);
     if (op_it != comparision_int_ops.end()) {
         op_it->second(result, newReg);
@@ -402,6 +420,9 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
         result.push_back(Register_To_Location(dst.value(), newReg, ctx));
     }
     return result;
+    }
+
+
 }
 
 template <typename T>

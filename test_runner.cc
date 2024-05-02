@@ -188,6 +188,13 @@ RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
 RUN_TEST_CASE(FloatBasic, "float_basic.c");
 RUN_TEST_CASE(FloatBasic2, "float_basic_2.c");
 
+RUN_TEST_CASE(FloatLessThanNegativeCase, "float_less_than_negative.c");
+RUN_TEST_CASE(FloatLessThanPositiveCase, "float_less_than_positive.c");
+RUN_TEST_CASE(FloatGreaterThanNegativeCase, "float_greater_negative.c");
+RUN_TEST_CASE(FloatGreaterThanPositiveCase, "float_greater_positive.c");
+
+RUN_TEST_CASE(FloatArr, "float_arr.c");
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -26,6 +26,20 @@ bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs) {
     return std::find(float_regs.begin(), float_regs.end(), p_reg) != float_regs.end();
 }
 
+[[nodiscard]] auto is_float_register(VirtualRegister p_reg) -> bool {
+    return (p_reg).kind == VirtualRegisterKind::FLOAT;
+}
+
+[[nodiscard]] auto is_float_register(Register p_reg) -> bool {
+    if (std::holds_alternative<VirtualRegister>(p_reg)) {
+        return is_float_register(std::get<VirtualRegister>(p_reg));
+    }
+    return is_float_register(std::get<HardcodedRegister>(p_reg).reg);
+}
+
+
+
+
 std::string register_to_asm(Register v_reg) {
     if (std::holds_alternative<VirtualRegister>(v_reg)) {
         throw std::runtime_error("cannot convert VirtualRegister to asm"); 
