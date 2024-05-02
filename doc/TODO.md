@@ -5,6 +5,7 @@
 - [ ] Implement *(arr + x) dereference
 
 ### Later
+- [ ] Compile time -- real	0m30.827s
 - [ ] Handle variables outside of functions
 - [ ] Implement multiplication
 - [ ] Implement division

@@ -27,7 +27,7 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
 
 [[nodiscard]] auto nasm_assemble_elf64(const std::string& asmPath, const std::string& objectPath)
     -> std::expected<int, std::string> {
-    const auto command = "nasm -f elf64 -o " + objectPath + " " + asmPath;
+    const auto command = "nasm -f  elf64 -o " + objectPath + " " + asmPath;
     const auto result = system(command.c_str());
     if (result != 0) {
         return std::unexpected("Failed to compile the asm file");
@@ -38,7 +38,7 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
 [[nodiscard]] auto gcc_link_standalone_binary(const std::string& objectPath,
                                               const std::string& binaryPath)
     -> std::expected<int, std::string> {
-    const auto command = "gcc -o " + binaryPath + " " + objectPath + " -nostartfiles -lc";
+    const auto command = "gcc -o " + binaryPath + " " + objectPath + " -nostartfiles -lc -fPIE";
     const auto result = system(command.c_str());
     if (result != 0) {
         return std::unexpected("Failed to link the object file");
@@ -186,6 +186,7 @@ RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
 
 /** Floats */
 RUN_TEST_CASE(FloatBasic, "float_basic.c");
+RUN_TEST_CASE(FloatBasic2, "float_basic_2.c");
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

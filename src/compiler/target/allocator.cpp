@@ -1,32 +1,61 @@
 #include "../../../include/compiler/target/allocator.hpp"
+#include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
 
 struct AllocatorContext {
    public:
-    std::set<size_t> usedRegs = {};
+    std::set<size_t> used_integer_regs = {};
+    std::set<size_t> used_float_regs = {};
     std::map<Register, BaseRegister> mapping = {};
 
-    [[nodiscard]] BaseRegister getReg() {
-        for (auto [idx, reg] : general_regs | std::views::enumerate) {
-            if (usedRegs.find(idx) == usedRegs.end()) {
-                usedRegs.insert(idx);
-                return reg;
-            }
+    [[nodiscard]] BaseRegister getReg(VirtualRegister virtual_register) {
+        if (virtual_register.kind == VirtualRegisterKind::INT) {
+            return getIntegerRegister();
         }
-        throw std::runtime_error("No free registers");
+        return getFloatRegister();
     }
 
     void freeReg(BaseRegister freedReg) {
         for (auto it = general_regs.begin(); it != general_regs.end(); ++it) {
             if (*it == freedReg) {
                 auto index = std::distance(general_regs.begin(), it);
-                usedRegs.erase(index);
+                used_integer_regs.erase(index);
+                return;
+            }
+        }
+
+        for (auto it = float_regs.begin(); it != float_regs.end(); ++it) {
+            if (*it == freedReg) {
+                auto index = std::distance(general_regs.begin(), it);
+                used_float_regs.erase(index);
                 return;
             }
         }
         throw std::runtime_error("Register not found");
     }
+    private:
+        [[nodiscard]] BaseRegister getIntegerRegister() {
+        for (auto [idx, reg] : general_regs | std::views::enumerate) {
+            if (used_integer_regs.find(idx) == used_integer_regs.end()) {
+                used_integer_regs.insert(idx);
+                return reg;
+            }
+        }
+        throw std::runtime_error("No free registers");
+        }
+
+        [[nodiscard]] BaseRegister getFloatRegister() {
+        for (auto [idx, reg] : float_regs | std::views::enumerate) {
+            if (used_float_regs.find(idx) == used_float_regs.end()) {
+                used_float_regs.insert(idx);
+                return reg;
+            }
+        }
+        throw std::runtime_error("No free registers");
+        }
+
+
 };
 
 
@@ -103,20 +132,21 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
         auto operation = instruction;
         auto process_register = [&ctx, &remappedRegisters, &firstUse, &lastUse,
-                                 &idx](VirtualRegister& reg) -> HardcodedRegister {
-            if (remappedRegisters.find(reg) != remappedRegisters.end()) {
-                reg = remappedRegisters[reg];
+                                 &idx](VirtualRegister& virtual_reg) -> HardcodedRegister {
+            
+            if (remappedRegisters.find(virtual_reg) != remappedRegisters.end()) {
+                virtual_reg = remappedRegisters[virtual_reg];
             }
 
-            if (ctx.mapping.find(reg) == ctx.mapping.end() || firstUse[reg.id] == idx) {
-                ctx.mapping[reg] = ctx.getReg();
+            if (ctx.mapping.find(virtual_reg) == ctx.mapping.end() || firstUse[virtual_reg.id] == idx) {
+                ctx.mapping[virtual_reg] = ctx.getReg(virtual_reg);
             }
 
-            if (lastUse[reg.id] <= idx) {
-                ctx.freeReg(ctx.mapping[reg]);
+            if (lastUse[virtual_reg.id] <= idx) {
+                ctx.freeReg(ctx.mapping[virtual_reg]);
             }
 
-            return HardcodedRegister{ctx.mapping[reg], reg.size};
+            return HardcodedRegister{ctx.mapping[virtual_reg], virtual_reg.size};
         };
         auto src_op = get_src_register(operation);
         if (src_op.has_value()) {

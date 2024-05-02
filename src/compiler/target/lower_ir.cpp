@@ -8,6 +8,7 @@
 
 #include "../../../include/ast/ast.hpp"
 #include "../../../include/compiler/target/lower_ir.hpp"
+#include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
 #pragma GCC diagnostic push
@@ -23,10 +24,14 @@ template <typename ImmediateType>
     return {ImmediateLoad<ImmediateType>{.dst = r_dst, .value = v_src.numerical_value}};
 }
 
+         
+[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<int> v_src, Ctx* ctx) {
+    return {StoreI{.dst = l_dest, .src = nullptr, .value = v_src.numerical_value, }};
+}
 
-template <typename ImmediateType>
-[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<ImmediateType> v_src, Ctx* ctx) {
-    return {StoreImmediate<ImmediateType>{.dst = l_dest, .value = v_src.numerical_value}};
+[[nodiscard]] ins_list _Value_To_Location(StackLocation l_dest,  qa_ir::Immediate<float> v_src, Ctx* ctx) {
+    const auto intermediate_reg = ctx->NewFloatRegister(4);
+    return {StoreF{.dst = l_dest, .src = intermediate_reg, .value = v_src.numerical_value}};
 }
 
 
@@ -80,7 +85,7 @@ template <typename ImmediateType>
 [[nodiscard]] ins_list _Value_To_Location(StackLocation s_dst,
                                                           qa_ir::Variable v_src, Ctx* ctx) {
     const auto sizeOfSource = SizeOf(v_src);
-    const auto reg = ctx->NewRegister(sizeOfSource);
+    const auto reg = ctx->NewIntegerRegister(sizeOfSource);
     auto result = ins_list{};
     // move variable to register
     const auto base_variable = ctx->get_stack_location(v_src, result);
@@ -145,10 +150,10 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, ins_list& instru
             if (std::holds_alternative<qa_ir::Variable>(*v.offset)) {
                 const auto offsetVariable = std::get<qa_ir::Variable>(*v.offset);
                 const auto offsetVariableOffset = get_stack_location(offsetVariable, instructions);
-                const auto reg = NewRegister(SizeOf(offsetVariable));
+                const auto reg = NewIntegerRegister(SizeOf(offsetVariable));
                     
                 instructions.push_back(Load{.dst = reg, .src = offsetVariableOffset});
-                const auto upperreg = NewRegister(8);
+                const auto upperreg = NewIntegerRegister(8);
                 instructions.push_back(ZeroExtend{.dst = upperreg, .src = reg});
                 return StackLocation{.offset = base.offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
             }
@@ -165,20 +170,20 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, ins_list& instru
         if (std::holds_alternative<qa_ir::Variable>(*v.offset)) {
             const auto offsetVariable = std::get<qa_ir::Variable>(*v.offset);
             const auto offsetVariableOffset = get_stack_location(offsetVariable, instructions);
-            const auto reg = NewRegister(SizeOf(offsetVariable));
+            const auto reg = NewIntegerRegister(SizeOf(offsetVariable));
                 
             instructions.push_back(Load{.dst = reg, .src = offsetVariableOffset});
-            const auto upperreg = NewRegister(8);
+            const auto upperreg = NewIntegerRegister(8);
             instructions.push_back(ZeroExtend{.dst = upperreg, .src = reg});
 
             // issue a lea
             const auto base_offset = 0; // why: ?
-            const auto offset_reg = NewRegister(8);
+            const auto offset_reg = NewIntegerRegister(8);
             const auto offset_of_element = StackLocation{.offset = base_offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
             instructions.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
 
             // move the address pointed to
-            const auto final_reg = NewRegister(8);
+            const auto final_reg = NewIntegerRegister(8);
             instructions.push_back(Load{.dst = final_reg, .src = base});
             instructions.push_back(Add{.dst = final_reg, .src = offset_reg});
 
@@ -188,17 +193,17 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, ins_list& instru
         if (std::holds_alternative<qa_ir::Temp>(*v.offset)) {
             const auto offsetVariable = std::get<qa_ir::Temp>(*v.offset);
             const auto offsetVariableReg = AllocateNewForTemp(offsetVariable);
-            const auto upperreg = NewRegister(8);
+            const auto upperreg = NewIntegerRegister(8);
             instructions.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
 
             // issue a lea
             const auto base_offset = 0; // why: ?
-            const auto offset_reg = NewRegister(8);
+            const auto offset_reg = NewIntegerRegister(8);
             const auto offset_of_element = StackLocation{.offset = base_offset, .is_computed = true, .src = upperreg, .scale = v.type.points_to_size};
             instructions.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
 
             // move the address pointed to
-            const auto final_reg = NewRegister(8);
+            const auto final_reg = NewIntegerRegister(8);
             instructions.push_back(Load{.dst = final_reg, .src = base});
             instructions.push_back(Add{.dst = final_reg, .src = offset_reg});
 
@@ -221,12 +226,23 @@ Register Ctx::AllocateNewForTemp(qa_ir::Temp t) {
     return reg;
 }
 
-VirtualRegister Ctx::NewRegister(int size) {
+VirtualRegister Ctx::NewIntegerRegister(int size) {
     if (size == 8) {
         return VirtualRegister{.id = tempCounter++, .size = size};
     }
     if (size == 4) {
         return VirtualRegister{.id = tempCounter++, .size = size};
+    }
+
+    throw std::runtime_error("Unsupported register size");
+}
+
+VirtualRegister Ctx::NewFloatRegister(int size) {
+    if (size == 8) {
+        return VirtualRegister{.id = tempCounter++, .size = size, .kind = VirtualRegisterKind::FLOAT};
+    }
+    if (size == 4) {
+        return VirtualRegister{.id = tempCounter++, .size = size, .kind = VirtualRegisterKind::FLOAT};
     }
 
     throw std::runtime_error("Unsupported register size");
@@ -326,7 +342,7 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 Register reg,  qa_ir::Immediate<float> value,
                                                                 Ctx& ctx) {
     ins_list result = {CmpImmediate<float>{.dst = reg, .value = value.numerical_value}};
-    Register newReg = ctx.NewRegister(4);
+    Register newReg = ctx.NewIntegerRegister(4);
     auto op_it = comparision_ops.find(kind);
     if (op_it != comparision_ops.end()) {
         op_it->second(result, newReg);
@@ -344,7 +360,7 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 Register reg,  qa_ir::Immediate<int> value,
                                                                 Ctx& ctx) {
     ins_list result = {CmpImmediate<int>{.dst = reg, .value = value.numerical_value}};
-    Register newReg = ctx.NewRegister(4);
+    Register newReg = ctx.NewIntegerRegister(4);
     auto op_it = comparision_ops.find(kind);
     if (op_it != comparision_ops.end()) {
         op_it->second(result, newReg);
@@ -362,7 +378,7 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 Register reg1, Register reg2,
                                                                 Ctx& ctx) {
     ins_list result = {Cmp{.dst = reg1, .src = reg2}};
-    Register newReg = ctx.NewRegister(4);
+    Register newReg = ctx.NewIntegerRegister(4);
     auto op_it = comparision_ops.find(kind);
     if (op_it != comparision_ops.end()) {
         op_it->second(result, newReg);
@@ -392,7 +408,7 @@ template <typename T>
 template <typename T>
 std::pair<Register, ins_list> ensureRegister(T operand, Ctx& ctx) {
     if constexpr (qa_ir::IsIRLocation<T>) {
-        Register reg = ctx.NewRegister(SizeOf(operand));
+        Register reg = ctx.NewIntegerRegister(SizeOf(operand));
         ins_list instructions = ctx.toLocation(reg, operand);
         return {reg, instructions};
     } else {
@@ -449,7 +465,7 @@ ins_list InstructionForArth(ast::BinOpKind kind,
                                             std::optional<target::Location> dst,
                                              qa_ir::Immediate<ImmediateType> value, RightType right, Ctx& ctx) {
 
-    const target::Register result_reg = ctx.NewRegister(4);
+    const target::Register result_reg = ctx.NewIntegerRegister(4);
     ins_list result = {ImmediateLoad<ImmediateType>{.dst = result_reg, .value = value.numerical_value}};
     auto [rhs_reg, move_to_rhs_instructions] = ensureRegister(right, ctx);
     std::ranges::copy(move_to_rhs_instructions, std::back_inserter(result));
@@ -464,7 +480,7 @@ ins_list InstructionForArth(ast::BinOpKind kind,
                                             std::optional<target::Location> dst,
                                              qa_ir::Immediate<float> value, RightType right, Ctx& ctx) {
 
-    const target::Register result_reg = ctx.NewRegister(4);
+    const target::Register result_reg = ctx.NewIntegerRegister(4);
     ins_list result = {ImmediateLoad<float>{.dst = result_reg, .value = value.numerical_value}};
     auto [rhs_reg, move_to_rhs_instructions] = ensureRegister(right, ctx);
     std::ranges::copy(move_to_rhs_instructions, std::back_inserter(result));
@@ -475,8 +491,8 @@ ins_list InstructionForArth(ast::BinOpKind kind,
 
 
 ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location> dst, qa_ir::Immediate<float> left,  qa_ir::Immediate<float> right, Ctx& ctx) {
-    auto result_reg = ctx.NewRegister(4);
-    auto src_reg = ctx.NewRegister(4);
+    auto result_reg = ctx.NewIntegerRegister(4);
+    auto src_reg = ctx.NewIntegerRegister(4);
     ins_list result = {ImmediateLoad<float>{.dst = result_reg, .value = left.numerical_value},
                                        ImmediateLoad<float>{.dst = src_reg, .value = right.numerical_value}};
     const auto rest_instructions = InstructionForArth(kind, dst, result_reg, src_reg, ctx);
@@ -485,8 +501,8 @@ ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location
 }
 
 ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location> dst, qa_ir::Immediate<int> left,  qa_ir::Immediate<int> right, Ctx& ctx) {
-    auto result_reg = ctx.NewRegister(4);
-    auto src_reg = ctx.NewRegister(4);
+    auto result_reg = ctx.NewIntegerRegister(4);
+    auto src_reg = ctx.NewIntegerRegister(4);
     ins_list result = {ImmediateLoad<int>{.dst = result_reg, .value = left.numerical_value},
                                        ImmediateLoad<int>{.dst = src_reg, .value = right.numerical_value}};
     const auto rest_instructions = InstructionForArth(kind, dst, result_reg, src_reg, ctx);
@@ -554,7 +570,7 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
             }
             if (std::holds_alternative<qa_ir::Variable>(*it)) {
                 const auto size = SizeOf(*it);
-                const auto reg = ctx.NewRegister(size);
+                const auto reg = ctx.NewIntegerRegister(size);
                 const auto variable = std::get<qa_ir::Variable>(*it);
                 const auto variableOffset = ctx.variable_offset.at(variable.name);
                 result.push_back(Load{.dst = reg, .src = variableOffset});
@@ -603,10 +619,10 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
     const auto variable = std::get<qa_ir::Variable>(deref.src);
     const auto variableOffset = ctx.variable_offset.at(variable.name);
     const auto depth = deref.depth;
-    auto reg = ctx.NewRegister(8);
+    auto reg = ctx.NewIntegerRegister(8);
     result.push_back(Load{.dst = reg, .src = variableOffset});
     for (int i = 1; i < depth; i++) {
-        const auto tempreg = ctx.NewRegister(8);
+        const auto tempreg = ctx.NewIntegerRegister(8);
         result.push_back(IndirectLoad{.dst = tempreg, .src = reg});
         reg = tempreg;
     }
@@ -621,7 +637,7 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
     // variable_dest holds the address of the variable
      auto variable_dest = deref.dst;
     // move the variable to a register
-    const auto tempregister = ctx.NewRegister(8);
+    const auto tempregister = ctx.NewIntegerRegister(8);
     l_value_ctx = true;
     auto moveInstructions = ctx.toLocation(tempregister, variable_dest);
     l_value_ctx = false;
@@ -629,7 +645,7 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
     // load the value at the address
     const auto src = deref.src;
     const auto srcSize = SizeOf(src);
-    const auto srcReg = ctx.NewRegister(srcSize);
+    const auto srcReg = ctx.NewIntegerRegister(srcSize);
     auto srcInstructions = ctx.toLocation(srcReg, src);
     result.insert(result.end(), srcInstructions.begin(), srcInstructions.end());
     // store the value at the address using indirect store instructions

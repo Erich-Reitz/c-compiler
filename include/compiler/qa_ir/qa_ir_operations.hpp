@@ -6,6 +6,7 @@
 #include <variant>
 
 #include "qa_ir.hpp"
+
 namespace qa_ir {
 struct Label {
     std::string name;

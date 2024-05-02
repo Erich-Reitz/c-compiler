@@ -12,7 +12,6 @@
 
 #include "qa_ir.hpp"
 #include "qa_ir_operations.hpp"
-#include "../target/qa_x86.hpp"
 #include "../../ast/ast.hpp"
 
 namespace qa_ir {

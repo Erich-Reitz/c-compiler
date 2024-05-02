@@ -5,7 +5,12 @@
 
 #include "../qa_ir/assem.hpp"
 #include "../qa_ir/qa_ir.hpp"
-#include "qa_x86.hpp"
+
+#include "qa_x86_frame.hpp"
+#include "qa_x86_locations.hpp"
+#include "qa_x86_instructions.hpp"
+#include "qa_x86_registers.hpp"
+
 
 namespace target {
 struct Ctx {
@@ -16,7 +21,8 @@ struct Ctx {
     [[nodiscard]] Location AllocateNew(qa_ir::Value v, std::vector<Instruction> &instructions) ; 
     [[nodiscard]] StackLocation get_stack_location(const qa_ir::Variable& v, std::vector<Instruction>& instructions) ; 
     [[nodiscard]] Register AllocateNewForTemp(qa_ir::Temp t);
-    [[nodiscard]] VirtualRegister NewRegister(int size);
+    [[nodiscard]] VirtualRegister NewIntegerRegister(int size);
+    [[nodiscard]] VirtualRegister NewFloatRegister(int size); 
     [[nodiscard]] std::vector<Instruction> toLocation(Location l, qa_ir::Value v);
     [[nodiscard]] int get_stack_offset() const;
     
