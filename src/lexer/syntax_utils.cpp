@@ -3,7 +3,7 @@
 #include <set>
 
 auto isTypeSpecifier(const Token token) -> bool {
-    return token.type == TokType::TOKEN_T_INT || token.type == TokType::TOKEN_T_VOID;
+    return token.type == TokType::TOKEN_T_INT || token.type == TokType::TOKEN_T_VOID || token.type == TokType::TOKEN_T_FLOAT;
 }
 
 auto isStmtBegin(const Token t) -> bool {

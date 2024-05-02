@@ -15,6 +15,7 @@ struct FunctionCallAstNode;
 struct ForLoopAstNode;
 struct DerefWriteAstNode;
 struct ConstIntAstNode;
+struct ConstFloatNode;
 struct VariableAstNode;
 struct DerefReadAstNode;
 struct AddrAstNode;
@@ -26,7 +27,8 @@ struct Stmt : public AstNode {
                  std::shared_ptr<FunctionCallAstNode>, std::shared_ptr<ForLoopAstNode>,
                  std::shared_ptr<DerefWriteAstNode>, std::shared_ptr<ConstIntAstNode>,
                  std::shared_ptr<VariableAstNode>, std::shared_ptr<DerefReadAstNode>,
-                 std::shared_ptr<AddrAstNode>, std::shared_ptr<BinaryOpAstNode>>
+                 std::shared_ptr<AddrAstNode>, std::shared_ptr<BinaryOpAstNode>,
+                 std::shared_ptr<ConstFloatNode>>
         node;
 
     Stmt(std::shared_ptr<IfNode> p_node);
@@ -41,6 +43,7 @@ struct Stmt : public AstNode {
     Stmt(std::shared_ptr<DerefReadAstNode> p_node);
     Stmt(std::shared_ptr<AddrAstNode> p_node);
     Stmt(std::shared_ptr<BinaryOpAstNode> p_node);
+    Stmt(std::shared_ptr<ConstFloatNode> p_node);
 
     [[nodiscard]] const std::string get_variable_name() const;
     [[nodiscard]] const ast::DataType get_variable_type() const;

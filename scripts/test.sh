@@ -2,7 +2,7 @@
 
 mkdir -p tmp
 
-cmake -S . -B build
+cmake -D CMAKE_CXX_COMPILER=g++-13 -S . -B build
 cmake --build build
 
 # Check for build success

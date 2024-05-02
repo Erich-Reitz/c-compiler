@@ -1,10 +1,5 @@
 #include "../../include/ast/ast.hpp"
 
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
-
 namespace ast {
 
 [[nodiscard]] auto is_arithmetic(BinOpKind kind) -> bool {

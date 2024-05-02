@@ -1,5 +1,3 @@
-#include "../../include/ast/Stmt.hpp"
-
 #include "../../include/ast/ast.hpp"
 
 namespace ast {
@@ -14,6 +12,7 @@ Stmt::Stmt(std::shared_ptr<ConstIntAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<VariableAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<DerefReadAstNode> p_node) : node(std::move(p_node)) {}
 Stmt::Stmt(std::shared_ptr<AddrAstNode> p_node) : node(std::move(p_node)) {}
+Stmt::Stmt(std::shared_ptr<ConstFloatNode> p_node) : node(std::move(p_node)) {}
 
 Stmt::Stmt(std::shared_ptr<BinaryOpAstNode> p_node) : node(std::move(p_node)) {}
 
@@ -52,7 +51,7 @@ const ast::DataType Stmt::get_variable_type() const {
 }
 
 [[nodiscard]] std::string Stmt::toString() const {
-    return std::visit([](const auto& node) { return node->toString(); }, node);
+    return std::visit([](const auto& v_node) { return v_node->toString(); }, node);
 }
 
 [[nodiscard]] auto BodyNode::is_stmt() const -> bool { return std::holds_alternative<Stmt>(node); }

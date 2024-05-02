@@ -27,7 +27,7 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
 
 [[nodiscard]] auto nasm_assemble_elf64(const std::string& asmPath, const std::string& objectPath)
     -> std::expected<int, std::string> {
-    const auto command = "nasm -f elf64 -o " + objectPath + " " + asmPath;
+    const auto command = "nasm -f  elf64 -o " + objectPath + " " + asmPath;
     const auto result = system(command.c_str());
     if (result != 0) {
         return std::unexpected("Failed to compile the asm file");
@@ -38,7 +38,7 @@ const std::string compiler_gen_binary_path = temp_dir + "test.out";
 [[nodiscard]] auto gcc_link_standalone_binary(const std::string& objectPath,
                                               const std::string& binaryPath)
     -> std::expected<int, std::string> {
-    const auto command = "gcc -o " + binaryPath + " " + objectPath + " -nostartfiles -lc";
+    const auto command = "gcc -o " + binaryPath + " " + objectPath + " -nostartfiles -lc -fPIE";
     const auto result = system(command.c_str());
     if (result != 0) {
         return std::unexpected("Failed to link the object file");
@@ -136,6 +136,7 @@ RUN_TEST_CASE(ForLoopDecrement, "for_loop_decrement.c");
 RUN_TEST_CASE(IntSwap, "int_swap.c");
 RUN_TEST_CASE(IntDerefAddition, "int_deref_addition.c");
 RUN_TEST_CASE(BasicDeref, "ptr_set.c");
+// RUN_TEST_CASE(PointerArthBasic, "ptr_lhs_addition.c");
 
 // /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
@@ -182,6 +183,17 @@ RUN_TEST_CASE(ArrayGetterBasic, "array_getter_basic.c");
 RUN_TEST_CASE(ArrayGetterAfterPassed, "array_getter_after_passed.c");
 RUN_TEST_CASE(ArrayGetterAfterPassedSimple, "array_getter_after_passed_simple.c");
 RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
+
+/** Floats */
+RUN_TEST_CASE(FloatBasic, "float_basic.c");
+RUN_TEST_CASE(FloatBasic2, "float_basic_2.c");
+
+RUN_TEST_CASE(FloatLessThanNegativeCase, "float_less_than_negative.c");
+RUN_TEST_CASE(FloatLessThanPositiveCase, "float_less_than_positive.c");
+RUN_TEST_CASE(FloatGreaterThanNegativeCase, "float_greater_negative.c");
+RUN_TEST_CASE(FloatGreaterThanPositiveCase, "float_greater_positive.c");
+
+RUN_TEST_CASE(FloatArr, "float_arr.c");
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

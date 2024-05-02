@@ -1,15 +1,7 @@
-#include "../../include/parser/parser.hpp"
-
 #include <source_location>
-#include <exception>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <stdexcept>
 
-#include "../../include/parser/st.hpp"
+#include "../../include/parser/parser.hpp"
 #include "../../include/parser/syntax_utils.hpp"
-#include "../../include/lexer/token.hpp"
 
 #define DEBUG 0
 
@@ -69,7 +61,11 @@ auto parseDeclarationSpecs() -> std::vector<st::DeclarationSpecifier> {
         if (peek().type == TokType::TOKEN_T_INT) {
             declspecs.push_back(st::DeclarationSpecifier{
                 st::TypeSpecifier{.type = st::TypeSpecifier::Type::INT, .iden = ""}});
-        } else {
+        } else if (peek().type == TokType::TOKEN_T_FLOAT) {
+            declspecs.push_back(st::DeclarationSpecifier{
+                st::TypeSpecifier{.type = st::TypeSpecifier::Type::FLOAT, .iden = ""}});
+        }
+        else {
             const auto ts = st::TypeSpecifier{
                 .type = st::TypeSpecifier::Type::IDEN,
                 .iden = peek().lexeme,
@@ -158,6 +154,10 @@ auto parsePrimaryExpression() -> st::Expression {
     if (peek().type == TokType::TOKEN_NUMBER) {
         const auto lexeme = peek().lexeme;
         advance();
+        if (lexeme.find('.') != std::string::npos) {
+            return std::make_shared<st::PrimaryExpression>(std::stof(lexeme));
+        }
+
         return std::make_shared<st::PrimaryExpression>(std::stoi(lexeme));
     }
     if (peek().type == TokType::TOKEN_LEFT_PAREN) {

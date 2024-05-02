@@ -1,14 +1,9 @@
-#include "../../include/compiler/qa_ir.hpp"
-
-#include <cassert>
-#include <stdexcept>
-
-#include "../../include/compiler/qa_x86.hpp"
+#include "../../../include/compiler/qa_ir/qa_ir_operations.hpp"
 
 namespace qa_ir {
 
 std::ostream& operator<<(std::ostream& os, const Operation& ins) {
-    return std::visit([&os](const auto& ins) -> std::ostream& { return os << ins; }, ins);
+    return std::visit([&os](const auto& v_ins) -> std::ostream& { return os << v_ins; }, ins);
 }
 
 std::ostream& operator<<(std::ostream& os, const Label& label) {
@@ -128,67 +123,4 @@ std::ostream& operator<<(std::ostream& os, const DefineStackPushed& dsp) {
     os << "define_stack_pushed name=" << dsp.name << ", size=" << dsp.size;
     return os;
 }
-
-bool operator<(const Temp& lhs, const Temp& rhs) { return lhs.id < rhs.id; }
-
-std::ostream& operator<<(std::ostream& os, const Temp& temp) {
-    os << "t" << temp.id;
-    return os;
 }
-
-bool operator<(const target::HardcodedRegister& lhs, const target::HardcodedRegister& rhs) {
-    return lhs.reg < rhs.reg;
-}
-
-std::ostream& operator<<(std::ostream& os, const target::HardcodedRegister& reg) {
-    os << target::to_asm(reg.reg, reg.size);
-    return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Value& v) {
-    if (std::holds_alternative<Temp>(v)) {
-        os << std::get<Temp>(v);
-    } else if (std::holds_alternative<target::HardcodedRegister>(v)) {
-        os << std::get<target::HardcodedRegister>(v);
-    } else if (std::holds_alternative<Variable>(v)) {
-        auto var = std::get<Variable>(v);
-        os << "qa_ir::Variable{name=" << var.name << ", size=" << var.type.size; 
-        if (var.offset) {
-            os << ", offset=" << *var.offset ;
-        }
-        os << "}";
-    } else if (std::holds_alternative<ConstInt>(v)) {
-        os << std::get<ConstInt>(v).numerical_value;
-    } else {
-        throw std::runtime_error("Unknown value type");
-    }
-    return os;
-}
-
-// TODO: for some things this behaves like you how you would expect SizeOfWhatItPointsTo to
-[[nodiscard]] int SizeOf(Value v) {
-    if (std::holds_alternative<Temp>(v)) {
-        return std::get<Temp>(v).size;
-    } else if (std::holds_alternative<target::HardcodedRegister>(v)) {
-        return std::get<target::HardcodedRegister>(v).size;
-    } else if (std::holds_alternative<Variable>(v)) {
-        if (std::get<Variable>(v).offset) {
-            return std::get<Variable>(v).type.points_to_size; 
-        }
-
-        return std::get<Variable>(v).type.size; 
-    } else if (std::holds_alternative<ConstInt>(v)) {
-        return 4;
-    } else {
-        throw std::runtime_error("Unknown value type");
-    }
-}
-
-[[nodiscard]] int SizeOfWhatItPointsTo(Value v) {
-    if (std::holds_alternative<Variable>(v)) {
-        return std::get<Variable>(v).type.size; 
-    }
-    throw std::runtime_error("Unknown value type");
-}
-
-}  // namespace qa_ir

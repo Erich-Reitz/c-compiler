@@ -14,8 +14,8 @@ SelectionStatement::SelectionStatement(Expression cond, std::shared_ptr<Compound
 Statement::Statement(
     std::variant<std::shared_ptr<ExpressionStatement>, std::shared_ptr<ReturnStatement>,
                  std::shared_ptr<SelectionStatement>, std::shared_ptr<ForStatement>>
-        stmt)
-    : stmt(std::move(stmt)) {}
+        p_stmt)
+    : stmt(std::move(p_stmt)) {}
 
 Statement::Statement(std::shared_ptr<ExpressionStatement> stmt) : stmt(std::move(stmt)) {}
 Statement::Statement(std::shared_ptr<ReturnStatement> stmt) : stmt(std::move(stmt)) {}
