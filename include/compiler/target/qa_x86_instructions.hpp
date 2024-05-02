@@ -15,7 +15,7 @@ concept HasToAsmMethod = requires(T t, CodegenContext& ctx) {
 
 auto to_asm_constant(int value) -> std::string;
 
-auto to_asm_constant(float value) -> std::string;
+
 
 template <typename T>
 struct ImmediateLoad  {
@@ -24,8 +24,15 @@ struct ImmediateLoad  {
     void* src = nullptr;
 
      auto to_asm(CodegenContext& ctx) const -> void {
-        const auto ins = "mov " + register_to_asm(dst) + ", " + to_asm_constant(value);
-        ctx.AddInstruction(ins);
+        const auto hardcoded_dest = std::get<HardcodedRegister>(dst);
+        if (is_float_register(hardcoded_dest.reg)) {
+            const auto float_label = ctx.DefineFloatConstant(value);
+            const auto ins = "movss " + register_to_asm(dst) + ", " + "[rel " + float_label + "]";
+            ctx.AddInstruction(ins);
+        } else {
+            const auto ins = "mov " + register_to_asm(dst) + ", " + to_asm_constant(value);
+            ctx.AddInstruction(ins);
+        }
      }
 } ; 
 
@@ -156,18 +163,31 @@ struct Cmp {
 };
 
 
-template <typename T>
-struct CmpImmediate {
+
+struct CmpI {
     Register dst;
-    T value;
+    void* src = nullptr;
+    int value;
+    
+
+     auto to_asm(CodegenContext& ctx) const -> void; 
+
+}; 
+
+struct CmpF {
+    Register dst;
+    Register src; 
+
+
+     auto to_asm(CodegenContext& ctx) const -> void ; 
+}; 
+
+struct SetA {
+    Register dst;
     void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void  {
-        const auto ins = "cmp " + register_to_asm(dst) + ", " + to_asm_constant(value);
-        ctx.AddInstruction(ins);
-     }
+     auto to_asm(CodegenContext& ctx) const -> void; 
 };
-
 
 struct SetEAl {
     Register dst;
@@ -252,7 +272,7 @@ struct Push {
 
 
 using Instruction = std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,  Cmp,
-                 CmpImmediate<int>,  CmpImmediate<float>, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>, StoreF>;
+                 CmpI,  CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
+                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>, StoreF, SetA>;
 
 }

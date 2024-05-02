@@ -26,6 +26,14 @@ struct Variable {
     std::string name = "";
     ast::DataType type = ast::DataType{.name = "", .size = 0};
     Value *offset = nullptr;
+
+    [[nodiscard]] auto is_float() const -> bool {
+        return type.name == "float";
+    }
+
+    [[nodiscard]] auto is_int() const -> bool {
+        return type.name == "int";
+    }
 };
 
 struct Temp {

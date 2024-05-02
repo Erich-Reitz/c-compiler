@@ -71,6 +71,7 @@ template <typename ImmediateType>
         result.push_back(lea);
         return result;
     }
+
     const auto variableOffset = ctx->get_stack_location(v_src, result);
     result.emplace_back(Load{.dst = r_dst, .src = variableOffset});
     return result;
@@ -329,22 +330,34 @@ ins_list Create_ArthBin_Instruction_Sequence(ast::BinOpKind kind,
 }
 
 static const std::map<ast::BinOpKind, std::function<void(ins_list&, Register)>>
-    comparision_ops = {
+    comparision_int_ops = {
         {ast::BinOpKind::Eq, [](ins_list& result, Register newReg) { result.push_back(SetEAl{.dst = newReg}); }},
         {ast::BinOpKind::Gt, [](ins_list& result, Register newReg) { result.push_back(SetGAl{.dst = newReg}); }},
         {ast::BinOpKind::Neq, [](ins_list& result, Register newReg) { result.push_back(SetNeAl{.dst = newReg});}},
         {ast::BinOpKind::Lt, [](ins_list& result, Register newReg) { result.push_back(SetLAl{.dst = newReg}); }},
     };
 
+static const std::map<ast::BinOpKind, std::function<void(ins_list&, Register)>>
+    comparision_float_ops = {
+        {ast::BinOpKind::Gt, [](ins_list& result, Register newReg) { result.push_back(SetA{.dst = newReg}); }},
+        {ast::BinOpKind::Lt, [](ins_list& result, Register newReg) { result.push_back(SetA{.dst = newReg}); }},
+    };
 
 ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg,  qa_ir::Immediate<float> value,
                                                                 Ctx& ctx) {
-    ins_list result = {CmpImmediate<float>{.dst = reg, .value = value.numerical_value}};
+    auto intermediate_reg = ctx.NewFloatRegister(4);
+    ins_list result = {ImmediateLoad<float>{.dst = intermediate_reg, .value = value.numerical_value}};        
+    if (kind == ast::BinOpKind::Lt) {
+         result.push_back(CmpF{.dst = intermediate_reg, .src = reg});
+        
+    }                                                                 else {
+       result.push_back(CmpF{.dst = reg, .src = intermediate_reg});
+    }
     Register newReg = ctx.NewIntegerRegister(4);
-    auto op_it = comparision_ops.find(kind);
-    if (op_it != comparision_ops.end()) {
+    auto op_it = comparision_float_ops.find(kind);
+    if (op_it != comparision_float_ops.end()) {
         op_it->second(result, newReg);
     } else {
         throw std::runtime_error("Unsupported comparison kind");
@@ -359,10 +372,10 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 std::optional<target::Location> dst,
                                                                 Register reg,  qa_ir::Immediate<int> value,
                                                                 Ctx& ctx) {
-    ins_list result = {CmpImmediate<int>{.dst = reg, .value = value.numerical_value}};
+    ins_list result = {CmpI{.dst = reg, .value = value.numerical_value}};
     Register newReg = ctx.NewIntegerRegister(4);
-    auto op_it = comparision_ops.find(kind);
-    if (op_it != comparision_ops.end()) {
+    auto op_it = comparision_int_ops.find(kind);
+    if (op_it != comparision_int_ops.end()) {
         op_it->second(result, newReg);
     } else {
         throw std::runtime_error("Unsupported comparison kind");
@@ -379,8 +392,8 @@ ins_list Create_Comparison_Instruction_Sequence(ast::BinOpKind kind,
                                                                 Ctx& ctx) {
     ins_list result = {Cmp{.dst = reg1, .src = reg2}};
     Register newReg = ctx.NewIntegerRegister(4);
-    auto op_it = comparision_ops.find(kind);
-    if (op_it != comparision_ops.end()) {
+    auto op_it = comparision_int_ops.find(kind);
+    if (op_it != comparision_int_ops.end()) {
         op_it->second(result, newReg);
     } else {
         throw std::runtime_error("Unsupported comparison kind");
@@ -405,16 +418,27 @@ template <typename T>
     throw std::runtime_error("Unsupported operation kind");
 }
 
-template <typename T>
-std::pair<Register, ins_list> ensureRegister(T operand, Ctx& ctx) {
-    if constexpr (qa_ir::IsIRLocation<T>) {
-        Register reg = ctx.NewIntegerRegister(SizeOf(operand));
-        ins_list instructions = ctx.toLocation(reg, operand);
-        return {reg, instructions};
-    } else {
-        static_assert(qa_ir::IsRegister<T>, "Operand must be a Register or IRLocation");
-        return {operand, {}};
+
+std::pair<Register, ins_list> ensureRegister(qa_ir::Variable operand, Ctx& ctx) {
+    if (operand.is_float()) {
+        const auto reg = ctx.NewFloatRegister(4);
+        return {reg, ctx.toLocation(reg, operand)};
     }
+    if (operand.is_int()) {
+        const auto reg = ctx.NewIntegerRegister(4);
+        return {reg, ctx.toLocation(reg, operand)};
+    }
+    throw std::runtime_error("Unsupported operand type");
+}
+
+std::pair<Register, ins_list> ensureRegister(qa_ir::Temp operand, Ctx& ctx) {
+    const auto reg = ctx.AllocateNewForTemp(operand);
+    return {reg, {}};
+}
+
+
+std::pair<Register, ins_list> ensureRegister(target::Register operand, Ctx& ctx) {
+    return {operand, {}};
 }
 
 template <typename T, typename U>
@@ -491,8 +515,8 @@ ins_list InstructionForArth(ast::BinOpKind kind,
 
 
 ins_list InstructionForArth(ast::BinOpKind kind,  std::optional<target::Location> dst, qa_ir::Immediate<float> left,  qa_ir::Immediate<float> right, Ctx& ctx) {
-    auto result_reg = ctx.NewIntegerRegister(4);
-    auto src_reg = ctx.NewIntegerRegister(4);
+    auto result_reg = ctx.NewFloatRegister(4);
+    auto src_reg = ctx.NewFloatRegister(4);
     ins_list result = {ImmediateLoad<float>{.dst = result_reg, .value = left.numerical_value},
                                        ImmediateLoad<float>{.dst = src_reg, .value = right.numerical_value}};
     const auto rest_instructions = InstructionForArth(kind, dst, result_reg, src_reg, ctx);

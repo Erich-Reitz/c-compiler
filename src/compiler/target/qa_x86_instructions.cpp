@@ -9,9 +9,6 @@ namespace target {
     return std::to_string(value); 
 }
 
-[[nodiscard]] auto to_asm_constant(float value) -> std::string {
-    return "__float32__(" + std::to_string(value) + ")" ; 
-}
 
 
 auto to_asm_constant(int value) -> std::string;
@@ -33,8 +30,14 @@ auto Mov::to_asm(CodegenContext& ctx) const -> void {
 auto Load::to_asm(CodegenContext& ctx) const -> void {
     const auto register_dst = std::get<target::HardcodedRegister>(dst);
     const auto source_prefix = register_dst.size == 4 ? std::string("dword") : std::string("qword");
-    const auto ins = "mov " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
-    ctx.AddInstruction(ins);
+    const auto hardcoded_dest = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dest.reg)) {
+        const auto ins = "movss " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "mov " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
+        ctx.AddInstruction(ins);
+    }
 }
 
 auto ZeroExtend::to_asm(CodegenContext& ctx) const -> void {
@@ -63,8 +66,13 @@ auto StoreF::to_asm(CodegenContext& ctx) const -> void {
 auto Store::to_asm(CodegenContext& ctx) const -> void {
     const auto register_source = std::get<target::HardcodedRegister>(src);
     const auto source_prefix = register_source.size == 4 ? std::string("dword") : std::string("qword");
-    const auto ins = "mov " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
-    ctx.AddInstruction(ins);
+    if (is_float_register(register_source.reg)) {
+        const auto ins = "movss " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "mov " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    }
 }
 
 auto JumpGreater::to_asm(CodegenContext& ctx) const -> void {
@@ -88,6 +96,8 @@ auto JumpEq::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto AddI::to_asm(CodegenContext& ctx) const -> void {
+
+
     const auto ins = "add " + register_to_asm(dst) + ", " + std::to_string(value);
     ctx.AddInstruction(ins);
 }
@@ -98,8 +108,14 @@ auto SubI::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto Add::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins = "add " + register_to_asm(dst) + ", " + register_to_asm(src);
-    ctx.AddInstruction(ins);
+    const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dst.reg)) {
+        const auto ins = "addss " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "add " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    }
 }
 
 auto Sub::to_asm(CodegenContext& ctx) const -> void {
@@ -107,12 +123,32 @@ auto Sub::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+
+auto CmpI::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "cmp " + register_to_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
+}
+
+auto CmpF::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "comiss " + register_to_asm(dst) + ", " + register_to_asm(src);
+    ctx.AddInstruction(ins);
+}
+
+
 auto Cmp::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + register_to_asm(src);
     ctx.AddInstruction(ins);
 }
 
 
+auto SetA::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tseta al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
 
 auto SetEAl::to_asm(CodegenContext& ctx) const -> void {
     std::string result = "\tsete al\n\t";

@@ -27,7 +27,7 @@ struct AllocatorContext {
 
         for (auto it = float_regs.begin(); it != float_regs.end(); ++it) {
             if (*it == freedReg) {
-                auto index = std::distance(general_regs.begin(), it);
+                auto index = std::distance(float_regs.begin(), it);
                 used_float_regs.erase(index);
                 return;
             }
