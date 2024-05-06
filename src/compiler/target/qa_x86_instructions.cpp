@@ -1,15 +1,11 @@
 
 #include "../../../include/compiler/target/qa_x86_instructions.hpp"
+
 #include "../../../include/compiler/target/qa_x86_locations.hpp"
 
 namespace target {
 
-
-[[nodiscard]] auto to_asm_constant(int value) -> std::string {
-    return std::to_string(value); 
-}
-
-
+[[nodiscard]] auto to_asm_constant(int value) -> std::string { return std::to_string(value); }
 
 auto to_asm_constant(int value) -> std::string;
 
@@ -24,18 +20,17 @@ auto Mov::to_asm(CodegenContext& ctx) const -> void {
     }
 }
 
-
-
-
 auto Load::to_asm(CodegenContext& ctx) const -> void {
     const auto register_dst = std::get<target::HardcodedRegister>(dst);
     const auto source_prefix = register_dst.size == 4 ? std::string("dword") : std::string("qword");
     const auto hardcoded_dest = std::get<HardcodedRegister>(dst);
     if (is_float_register(hardcoded_dest.reg)) {
-        const auto ins = "movss " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
+        const auto ins =
+            "movss " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
         ctx.AddInstruction(ins);
     } else {
-        const auto ins = "mov " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
+        const auto ins =
+            "mov " + register_to_asm(dst) + ", " + source_prefix + stack_location_at_asm(src);
         ctx.AddInstruction(ins);
     }
 }
@@ -45,32 +40,36 @@ auto ZeroExtend::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
-
 auto StoreI::to_asm(CodegenContext& ctx) const -> void {
-    const auto source_prefix = std::string("dword"); 
+    const auto source_prefix = std::string("dword");
 
-    const auto ins = "mov " + source_prefix +  stack_location_at_asm(dst) + ", " + to_asm_constant(value);
-    ctx.AddInstruction(ins) ; 
+    const auto ins =
+        "mov " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
 }
 
-
 auto StoreF::to_asm(CodegenContext& ctx) const -> void {
-    const auto source_prefix = std::string("dword"); 
+    const auto source_prefix = std::string("dword");
     const auto f_value_label = ctx.DefineFloatConstant(value);
-    const auto intermediate_move = "movss " + register_to_asm(src) + ", " + "[rel " + f_value_label + "]"; 
+    const auto intermediate_move =
+        "movss " + register_to_asm(src) + ", " + "[rel " + f_value_label + "]";
     ctx.AddInstruction(intermediate_move);
-    const auto move_to_stack = "movss " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+    const auto move_to_stack =
+        "movss " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
     ctx.AddInstruction(move_to_stack);
 }
 
 auto Store::to_asm(CodegenContext& ctx) const -> void {
     const auto register_source = std::get<target::HardcodedRegister>(src);
-    const auto source_prefix = register_source.size == 4 ? std::string("dword") : std::string("qword");
+    const auto source_prefix =
+        register_source.size == 4 ? std::string("dword") : std::string("qword");
     if (is_float_register(register_source.reg)) {
-        const auto ins = "movss " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+        const auto ins =
+            "movss " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
         ctx.AddInstruction(ins);
     } else {
-        const auto ins = "mov " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+        const auto ins =
+            "mov " + source_prefix + stack_location_at_asm(dst) + ", " + register_to_asm(src);
         ctx.AddInstruction(ins);
     }
 }
@@ -96,8 +95,6 @@ auto JumpEq::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto AddI::to_asm(CodegenContext& ctx) const -> void {
-
-
     const auto ins = "add " + register_to_asm(dst) + ", " + std::to_string(value);
     ctx.AddInstruction(ins);
 }
@@ -123,7 +120,6 @@ auto Sub::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
-
 auto CmpI::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + to_asm_constant(value);
     ctx.AddInstruction(ins);
@@ -134,12 +130,10 @@ auto CmpF::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
-
 auto Cmp::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + register_to_asm(src);
     ctx.AddInstruction(ins);
 }
-
 
 auto SetA::to_asm(CodegenContext& ctx) const -> void {
     std::string result = "\tseta al\n\t";
@@ -202,7 +196,7 @@ auto Lea::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto IndirectLoad::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins= "mov " + register_to_asm(dst) + ", [" + register_to_asm(src) + "]";
+    const auto ins = "mov " + register_to_asm(dst) + ", [" + register_to_asm(src) + "]";
     ctx.AddInstruction(ins);
 }
 
@@ -224,4 +218,4 @@ auto Push::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
-}
+}  // namespace target

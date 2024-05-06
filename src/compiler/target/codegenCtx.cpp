@@ -5,7 +5,6 @@ void CodegenContext::AddInstructionNoIndent(const std::string& i) { Code += (i +
 
 void CodegenContext::AddInstruction(const std::string& i) { Code += "\t" + i + "\n"; }
 
-
 //  ideally the assembly looks like this.
 // section .data
 // a: dd 5.000
@@ -18,4 +17,4 @@ std::string CodegenContext::DefineFloatConstant(float value) {
     DataSection += ins + "\n";
     return name;
 }
-}
+}  // namespace target

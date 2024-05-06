@@ -1,7 +1,8 @@
+#include "../../include/compiler/translate.hpp"
+
 #include <utility>
 
 #include "../../include/ast/asttraits.hpp"
-#include "../../include/compiler/translate.hpp"
 
 namespace ast {
 
@@ -9,8 +10,7 @@ namespace ast {
 auto translate(const std::shared_ptr<st::PrimaryExpression>& expr, Ctx& ctx) -> Stmt {
     if (expr->type == st::PrimaryExpressionType::INT) {
         return std::make_shared<ConstIntAstNode>(expr->value);
-    }
-    else if (expr->type == st::PrimaryExpressionType::FLOAT) {
+    } else if (expr->type == st::PrimaryExpressionType::FLOAT) {
         return std::make_shared<ConstFloatNode>(expr->f_value);
     }
 
@@ -30,9 +30,8 @@ auto translate(const std::shared_ptr<st::ArrayAccessExpression>& expr, Ctx& ctx)
     std::string name = expr->name;
     auto index = translate(expr->index, ctx);
     const DataType dt = ctx.local_variables[name]->type;
-    return std::make_shared<VariableAstNode>(name, dt, index); 
+    return std::make_shared<VariableAstNode>(name, dt, index);
 }
-
 
 // assignment
 auto translate(const std::shared_ptr<st::AssignmentExpression>& expr, Ctx& ctx) -> Stmt {
@@ -85,6 +84,27 @@ auto translate(const std::shared_ptr<st::AdditiveExpression>& expr, Ctx& ctx) ->
     throw std::runtime_error("translate(const st::AdditiveExpression &expr, Ctx &ctx)");
 }
 
+// takes any statement, and turns it into a binary operation.
+// so something like if(a) becomes if(a != 0)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+[[nodiscard]] auto translate_condition(ast::Stmt condition, Ctx& ctx)
+    -> std::shared_ptr<BinaryOpAstNode> {
+    if (const auto kind = condition.get_bin_op()) {
+        auto translatedCondition = condition.get_binary_op_node();
+        if (!is_comparison(*kind)) {
+            translatedCondition = std::make_shared<BinaryOpAstNode>(
+                std::move(condition), std::make_shared<ConstIntAstNode>(0), BinOpKind::Neq);
+        }
+        return translatedCondition;
+    } else {
+        auto translatedCondition = std::make_shared<BinaryOpAstNode>(
+            condition, std::make_shared<ConstIntAstNode>(0), BinOpKind::Neq);
+        return translatedCondition;
+    }
+}
+#pragma GCC diagnostic pop
+
 auto translate(const std::shared_ptr<st::ForStatement>& stmt, Ctx& ctx) -> Stmt {
     const st::ForDeclaration& init = stmt->init;
     const auto iden = init.initDeclarator.value().declarator.directDeclarator.VariableIden();
@@ -101,10 +121,10 @@ auto translate(const std::shared_ptr<st::ForStatement>& stmt, Ctx& ctx) -> Stmt 
     auto forInit =
         std::make_shared<MoveAstNode>(std::move(var), std::move(initInFirstEntryOfForLoop));
 
-    std::optional<Stmt> forCondition;
+    std::optional<std::shared_ptr<BinaryOpAstNode>> forCondition;
     std::optional<Stmt> forUpdate;
     if (stmt->cond) {
-        forCondition = translate(*stmt->cond, ctx);
+        forCondition = translate_condition(translate(*stmt->cond, ctx), ctx);
     }
     if (stmt->inc) {
         forUpdate = translate(*stmt->inc, ctx);
@@ -153,25 +173,14 @@ auto translate(const std::shared_ptr<st::ExpressionStatement>& stmt, Ctx& ctx) -
 // selection statement statement
 auto translate(const std::shared_ptr<st::SelectionStatement>& stmt, Ctx& ctx) -> Stmt {
     auto condition = translate(stmt->cond, ctx);
-    if (const auto kind = condition.get_bin_op()) {
-        if (!is_comparison(*kind)) {
-            condition = std::make_shared<BinaryOpAstNode>(
-                std::move(condition), std::make_shared<ConstIntAstNode>(0), BinOpKind::Neq);
-        }
-        auto then = translate(*stmt->then, ctx);
-        if (stmt->else_) {
-            auto else_ = translate(*stmt->else_, ctx);
-            return std::make_shared<IfNode>(std::move(condition), std::move(then),
-                                            std::move(else_));
-        }
-        return std::make_shared<IfNode>(std::move(condition), std::move(then), std::nullopt);
-    } else {
-        condition = std::make_shared<BinaryOpAstNode>(
-            std::move(condition), std::make_shared<ConstIntAstNode>(0), BinOpKind::Neq);
+    auto translatedCondition = translate_condition(condition, ctx);
+    auto then = translate(*stmt->then, ctx);
+    std::optional<std::vector<BodyNode>> else_ = std::nullopt;
+    if (stmt->else_) {
+        else_ = translate(*stmt->else_, ctx);
     }
-    return std::make_shared<IfNode>(
-        std::move(condition), translate(*stmt->then, ctx),
-        stmt->else_ ? std::make_optional(translate(*stmt->else_, ctx)) : std::nullopt);
+    return std::make_shared<IfNode>(std::move(translatedCondition), std::move(then),
+                                    std::move(else_));
 }
 
 // declaration
@@ -184,8 +193,7 @@ auto translate(const std::shared_ptr<st::SelectionStatement>& stmt, Ctx& ctx) ->
 
     if (!decl.initDeclarator.value().initializer.has_value()) {
         return std::make_shared<MoveAstNode>(
-            std::make_shared<VariableAstNode>(iden, datatype, std::nullopt),
-            std::nullopt); 
+            std::make_shared<VariableAstNode>(iden, datatype, std::nullopt), std::nullopt);
     }
 
     const auto& expr = decl.initDeclarator.value().initializer.value().expr;
@@ -241,7 +249,8 @@ auto translate(st::FuncDef* fd, Ctx& ctx) -> std::shared_ptr<FrameAstNode> {
     for (const auto& p : params) {
         const auto paramName = p.name;
         const auto type = p.type;
-        ctx.local_variables[p.name] = std::make_shared<VariableAstNode>(paramName, type, std::nullopt) ; 
+        ctx.local_variables[p.name] =
+            std::make_shared<VariableAstNode>(paramName, type, std::nullopt);
     }
     auto body = translate(fd->body, ctx);
     return std::make_shared<FrameAstNode>(functionName, std::move(body), std::move(params));

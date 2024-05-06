@@ -16,7 +16,7 @@ namespace ast {
         return lhs.toString() + " = " + rhs.value().toString();
     }
 
-    return lhs.toString() + " = " + ";"; 
+    return lhs.toString() + " = " + ";";
 }
 
 }  // namespace ast

@@ -5,11 +5,10 @@
 #include <string>
 #include <vector>
 
+#include "../parser/st.hpp"
 #include "AstNode.hpp"
 #include "DataType.hpp"
 #include "Stmt.hpp"
-
-#include "../parser/st.hpp"
 
 namespace ast {
 
@@ -40,7 +39,6 @@ struct ConstFloatNode : public AstNode {
 
     [[nodiscard]] auto toString() const -> std::string override { return std::to_string(value); }
 };
-
 
 struct ReturnAstNode : public AstNode {
    public:
@@ -83,7 +81,8 @@ struct MoveAstNode : public AstNode {
     std::optional<Stmt> rhs;
 
     MoveAstNode(Stmt p_lhs, Stmt p_rhs) : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)) {}
-    MoveAstNode(Stmt p_lhs, std::optional<Stmt> p_rhs) : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)) {}
+    MoveAstNode(Stmt p_lhs, std::optional<Stmt> p_rhs)
+        : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)) {}
 
     [[nodiscard]] auto toString() const -> std::string override;
 };
@@ -111,7 +110,7 @@ struct DerefReadAstNode : public AstNode {
 
     explicit DerefReadAstNode(Stmt p_base_expr, Stmt p_offset_expr)
         : base_expr(std::move(p_base_expr)), offset_expr(std::move(p_offset_expr)) {}
-    
+
     explicit DerefReadAstNode(Stmt p_base_expr, std::optional<Stmt> p_offset_expr)
         : base_expr(std::move(p_base_expr)), offset_expr(std::move(p_offset_expr)) {}
 
@@ -122,11 +121,11 @@ struct DerefReadAstNode : public AstNode {
         return 1;
     }
 
-    [[nodiscard]] auto toString() const -> std::string override { 
+    [[nodiscard]] auto toString() const -> std::string override {
         if (offset_expr.has_value()) {
             return "*" + base_expr.toString() + "[" + offset_expr.value().toString() + "]";
         }
-        
+
         return "*" + base_expr.toString();
     }
 };
@@ -142,13 +141,12 @@ struct DerefWriteAstNode : public AstNode {
     explicit DerefWriteAstNode(Stmt p_base_expr, std::optional<Stmt> p_offset_expr)
         : base_expr(std::move(p_base_expr)), offset_expr(std::move(p_offset_expr)) {}
 
-    [[nodiscard]] auto toString() const -> std::string override { 
+    [[nodiscard]] auto toString() const -> std::string override {
         if (offset_expr.has_value()) {
             return "*" + base_expr.toString() + "[" + offset_expr.value().toString() + "]";
         }
-        
+
         return "*" + base_expr.toString();
-    
     }
 };
 
@@ -181,33 +179,47 @@ struct VariableAstNode : public AstNode {
 
     explicit VariableAstNode(const std::string& p_name, DataType p_type, Stmt p_offset)
         : name(p_name), type(p_type), offset(std::move(p_offset)) {}
-    explicit VariableAstNode(const std::string& p_name, DataType p_type, std::optional<Stmt> p_offset)
+    explicit VariableAstNode(const std::string& p_name, DataType p_type,
+                             std::optional<Stmt> p_offset)
         : name(p_name), type(p_type), offset(std::move(p_offset)) {}
-    [[nodiscard]] auto toString() const -> std::string override { 
-
+    [[nodiscard]] auto toString() const -> std::string override {
         const auto type_description = type.name;
         if (offset.has_value()) {
             return name + " : " + type_description + " " + "[" + offset.value().toString() + "]";
         }
-        
+
         return name + " : " + type_description;
     }
-}; 
+};
 
 struct IfNode : public AstNode {
    public:
-    Stmt condition;
+    std::shared_ptr<BinaryOpAstNode> condition;
     std::vector<BodyNode> then;
     std::optional<std::vector<BodyNode>> else_;
 
-    IfNode(Stmt p_condition, std::vector<BodyNode> p_then, std::vector<BodyNode> p_else)
+    IfNode(std::shared_ptr<BinaryOpAstNode> p_condition, std::vector<BodyNode> p_then,
+           std::vector<BodyNode> p_else)
         : condition(std::move(p_condition)), then(std::move(p_then)), else_(std::move(p_else)) {}
 
-    IfNode(Stmt p_condition, std::vector<BodyNode> p_then, std::optional<std::vector<BodyNode>> p_else)
+    IfNode(std::shared_ptr<BinaryOpAstNode> p_condition, std::vector<BodyNode> p_then,
+           std::optional<std::vector<BodyNode>> p_else)
         : condition(std::move(p_condition)), then(std::move(p_then)), else_(std::move(p_else)) {}
 
     [[nodiscard]] auto toString() const -> std::string override {
-        return "if " + condition.toString();
+        std::string result = "if (" + condition->toString() + ") {\n";
+        for (const auto& node : then) {
+            result += node.toString() + "\n";
+        }
+        result += "}\n";
+        if (else_.has_value()) {
+            result += "else {\n";
+            for (const auto& node : else_.value()) {
+                result += node.toString() + "\n";
+            }
+            result += "}";
+        }
+        return result;
     }
 };
 
@@ -217,8 +229,11 @@ struct FunctionCallAstNode : public AstNode {
     std::vector<Stmt> callArgs;
     ast::DataType returnType;
 
-    FunctionCallAstNode(std::string p_call_name, std::vector<Stmt> p_call_args, ast::DataType p_return_type)
-        : callName(std::move(p_call_name)), callArgs(std::move(p_call_args)), returnType(p_return_type) {}
+    FunctionCallAstNode(std::string p_call_name, std::vector<Stmt> p_call_args,
+                        ast::DataType p_return_type)
+        : callName(std::move(p_call_name)),
+          callArgs(std::move(p_call_args)),
+          returnType(p_return_type) {}
 
     [[nodiscard]] auto toString() const -> std::string override { return callName; }
 };
@@ -226,25 +241,26 @@ struct FunctionCallAstNode : public AstNode {
 struct ForLoopAstNode : public AstNode {
    public:
     std::shared_ptr<MoveAstNode> forInit;
-    std::optional<Stmt> forCondition;
+    std::optional<std::shared_ptr<BinaryOpAstNode>> forCondition;
     std::optional<Stmt> forUpdate;
     std::vector<BodyNode> forBody;
 
-    ForLoopAstNode(std::shared_ptr<MoveAstNode> p_for_init, std::optional<Stmt> p_for_condition,
+    ForLoopAstNode(std::shared_ptr<MoveAstNode> p_for_init,
+                   std::optional<std::shared_ptr<BinaryOpAstNode>> p_for_condition,
                    std::optional<Stmt> p_for_update, std::vector<BodyNode> p_for_body)
         : forInit(std::move(p_for_init)),
           forCondition(std::move(p_for_condition)),
           forUpdate(std::move(p_for_update)),
           forBody(std::move(p_for_body)) {}
 
-    [[nodiscard]] auto toString() const -> std::string override { 
+    [[nodiscard]] auto toString() const -> std::string override {
         std::string result = "for (";
         if (forInit) {
             result += forInit->toString();
         }
         result += "; ";
         if (forCondition.has_value()) {
-            result += forCondition.value().toString();
+            result += forCondition.value()->toString();
         }
         result += "; ";
         if (forUpdate.has_value()) {

@@ -16,8 +16,10 @@ struct Ctx {
     unsigned long counter = 0;
     bool __lvalueContext = false;
     std::unordered_map<std::string, std::shared_ptr<VariableAstNode>> local_variables;
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
     void set_lvalueContext(std::string why, bool value) { __lvalueContext = value; }
+#pragma GCC diagnostic pop
 };
 
 [[nodiscard]] auto translate(const st::Expression& expr, Ctx& ctx) -> Stmt;

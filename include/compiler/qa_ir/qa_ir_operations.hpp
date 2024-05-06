@@ -182,4 +182,4 @@ using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, Conditi
                            ConditionalJumpLess>;
 
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
-}
+}  // namespace qa_ir

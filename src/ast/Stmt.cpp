@@ -24,6 +24,10 @@ Stmt::Stmt(std::shared_ptr<BinaryOpAstNode> p_node) : node(std::move(p_node)) {}
     return std::get<std::shared_ptr<VariableAstNode>>(node);
 }
 
+[[nodiscard]] auto Stmt::get_binary_op_node() -> std::shared_ptr<BinaryOpAstNode> {
+    return std::get<std::shared_ptr<BinaryOpAstNode>>(node);
+}
+
 [[nodiscard]] auto Stmt::is_deref_write() const -> bool {
     return std::holds_alternative<std::shared_ptr<DerefWriteAstNode>>(node);
 }

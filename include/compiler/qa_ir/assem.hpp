@@ -10,9 +10,9 @@
 #include <variant>
 #include <vector>
 
+#include "../../ast/ast.hpp"
 #include "qa_ir.hpp"
 #include "qa_ir_operations.hpp"
-#include "../../ast/ast.hpp"
 
 namespace qa_ir {
 

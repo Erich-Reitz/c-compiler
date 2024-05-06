@@ -51,7 +51,8 @@ struct Stmt : public AstNode {
     [[nodiscard]] auto is_variable_ast_node() const -> bool;
     [[nodiscard]] auto is_deref_write() const -> bool;
 
-    [[nodiscard]] auto get_variable_ast_node() -> std::shared_ptr<VariableAstNode> ; 
+    [[nodiscard]] auto get_variable_ast_node() -> std::shared_ptr<VariableAstNode>;
+    [[nodiscard]] auto get_binary_op_node() -> std::shared_ptr<BinaryOpAstNode>;
 
     [[nodiscard]] std::string toString() const override;
 };

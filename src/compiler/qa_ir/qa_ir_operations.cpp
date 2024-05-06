@@ -123,4 +123,4 @@ std::ostream& operator<<(std::ostream& os, const DefineStackPushed& dsp) {
     os << "define_stack_pushed name=" << dsp.name << ", size=" << dsp.size;
     return os;
 }
-}
+}  // namespace qa_ir

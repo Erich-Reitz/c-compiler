@@ -1,7 +1,7 @@
 #pragma once
 
-#include <iostream>
 #include <cassert>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,7 +17,8 @@ class AdditiveExpression;
 class FunctionCallExpression;
 class ArrayAccessExpression;
 
-using Expression = std::variant<std::shared_ptr<PrimaryExpression>, std::shared_ptr<AssignmentExpression>,
+using Expression =
+    std::variant<std::shared_ptr<PrimaryExpression>, std::shared_ptr<AssignmentExpression>,
                  std::shared_ptr<UnaryExpression>, std::shared_ptr<AdditiveExpression>,
                  std::shared_ptr<FunctionCallExpression>, std::shared_ptr<ArrayAccessExpression>>;
 
@@ -31,10 +32,10 @@ class PrimaryExpression {
         : type(PrimaryExpressionType::INT), value(p_value), f_value(0.0), idenValue("") {}
 
     PrimaryExpression(float p_value)
-        : type(PrimaryExpressionType::FLOAT), value(0),  f_value(p_value), idenValue("") {}
+        : type(PrimaryExpressionType::FLOAT), value(0), f_value(p_value), idenValue("") {}
 
     PrimaryExpression(std::string p_iden_value)
-        : type(PrimaryExpressionType::IDEN), value(0), f_value(0.0),  idenValue(p_iden_value) {}
+        : type(PrimaryExpressionType::IDEN), value(0), f_value(0.0), idenValue(p_iden_value) {}
 
     std::ostream& print(std::ostream& os) {
         if (type == PrimaryExpressionType::INT) {
@@ -178,7 +179,7 @@ inline std::ostream& operator<<(std::ostream& os, const PrimaryExpression& node)
 
 class TypeSpecifier {
    public:
-    enum class Type { INT, DOUBLE, IDEN , FLOAT };
+    enum class Type { INT, DOUBLE, IDEN, FLOAT };
     Type type;
     std::string iden;
 };
@@ -228,7 +229,8 @@ enum class DeclaratorKind { VARIABLE, FUNCTION, ARRAY };
 class DirectDeclarator {
    public:
     DeclaratorKind kind;
-    std::variant<VariableDirectDeclarator, FunctionDirectDeclarator, ArrayDirectDeclarator> declarator;
+    std::variant<VariableDirectDeclarator, FunctionDirectDeclarator, ArrayDirectDeclarator>
+        declarator;
 
     std::string VariableIden() const {
         if (kind == DeclaratorKind::VARIABLE) {

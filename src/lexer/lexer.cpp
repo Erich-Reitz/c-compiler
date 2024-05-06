@@ -15,9 +15,9 @@ static unsigned long line = 1;
 std::string source;
 
 const std::unordered_map<std::string, TokType> keywords = {
-    {"return", TokType::TOKEN_RETURN},  {"int", TokType::TOKEN_T_INT},
-    {"else", TokType::TOKEN_ELSE},      {"if", TokType::TOKEN_IF},
-    {"for", TokType::TOKEN_FOR},        {"void", TokType::TOKEN_T_VOID},
+    {"return", TokType::TOKEN_RETURN},   {"int", TokType::TOKEN_T_INT},
+    {"else", TokType::TOKEN_ELSE},       {"if", TokType::TOKEN_IF},
+    {"for", TokType::TOKEN_FOR},         {"void", TokType::TOKEN_T_VOID},
     {"double", TokType::TOKEN_T_DOUBLE}, {"float", TokType::TOKEN_T_FLOAT},
 };
 

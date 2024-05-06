@@ -1,4 +1,5 @@
 #include "../../../include/compiler/target/allocator.hpp"
+
 #include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
@@ -34,8 +35,9 @@ struct AllocatorContext {
         }
         throw std::runtime_error("Register not found");
     }
-    private:
-        [[nodiscard]] BaseRegister getIntegerRegister() {
+
+   private:
+    [[nodiscard]] BaseRegister getIntegerRegister() {
         for (auto [idx, reg] : general_regs | std::views::enumerate) {
             if (used_integer_regs.find(idx) == used_integer_regs.end()) {
                 used_integer_regs.insert(idx);
@@ -43,9 +45,9 @@ struct AllocatorContext {
             }
         }
         throw std::runtime_error("No free registers");
-        }
+    }
 
-        [[nodiscard]] BaseRegister getFloatRegister() {
+    [[nodiscard]] BaseRegister getFloatRegister() {
         for (auto [idx, reg] : float_regs | std::views::enumerate) {
             if (used_float_regs.find(idx) == used_float_regs.end()) {
                 used_float_regs.insert(idx);
@@ -53,15 +55,12 @@ struct AllocatorContext {
             }
         }
         throw std::runtime_error("No free registers");
-        }
-
-
+    }
 };
 
-
-
-auto getVirtualRegisterIDs(const Instruction &instruction) -> std::tuple<std::optional<int>, std::optional<int>> {
-    const auto srcId = get_src_virtual_id_if_present(instruction); 
+auto getVirtualRegisterIDs(const Instruction& instruction)
+    -> std::tuple<std::optional<int>, std::optional<int>> {
+    const auto srcId = get_src_virtual_id_if_present(instruction);
     const auto dstId = get_dest_virtual_id_if_present(instruction);
     return {srcId, dstId};
 }
@@ -107,7 +106,8 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
                 if (src.has_value()) {
                     // if src is in remapped registers, then we need to remap it
                     if (remappedRegisters.find(*src) != remappedRegisters.end()) {
-                        remappedRegisters[dest] = remappedRegisters[*src];
+                        const auto remapped_reg = remappedRegisters[*src];
+                        remappedRegisters[dest] = remapped_reg;
                     } else {
                         remappedRegisters[dest] = *src;
                     }
@@ -133,12 +133,12 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
         auto operation = instruction;
         auto process_register = [&ctx, &remappedRegisters, &firstUse, &lastUse,
                                  &idx](VirtualRegister& virtual_reg) -> HardcodedRegister {
-            
             if (remappedRegisters.find(virtual_reg) != remappedRegisters.end()) {
                 virtual_reg = remappedRegisters[virtual_reg];
             }
 
-            if (ctx.mapping.find(virtual_reg) == ctx.mapping.end() || firstUse[virtual_reg.id] == idx) {
+            if (ctx.mapping.find(virtual_reg) == ctx.mapping.end() ||
+                firstUse[virtual_reg.id] == idx) {
                 ctx.mapping[virtual_reg] = ctx.getReg(virtual_reg);
             }
 

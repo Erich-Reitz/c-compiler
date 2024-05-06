@@ -1,8 +1,5 @@
 #pragma once
 
-#include "qa_x86_instructions.hpp"
-#include "qa_x86_registers.hpp"
-
 #include <concepts>
 #include <iostream>
 #include <optional>
@@ -10,12 +7,12 @@
 #include <variant>
 #include <vector>
 
-
+#include "qa_x86_instructions.hpp"
+#include "qa_x86_registers.hpp"
 
 namespace target {
 
-int sixteenByteAlign(int size) ; 
-
+int sixteenByteAlign(int size);
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);
 std::optional<int> get_dest_virtual_id_if_present(const Instruction& ins);
@@ -34,7 +31,5 @@ template <typename T>
 concept HasRegisterDest = requires(T t) {
     { t.dst } -> std::convertible_to<Register>;
 };
-
-
 
 }  // namespace target

@@ -2,7 +2,6 @@
 
 namespace qa_ir {
 
-
 bool operator<(const Temp& lhs, const Temp& rhs) { return lhs.id < rhs.id; }
 
 std::ostream& operator<<(std::ostream& os, const Temp& temp) {
@@ -15,7 +14,7 @@ bool operator<(const target::HardcodedRegister& lhs, const target::HardcodedRegi
 }
 
 std::ostream& operator<<(std::ostream& os, const target::HardcodedRegister& reg) {
-    os << target::register_to_asm(reg); 
+    os << target::register_to_asm(reg);
     return os;
 }
 
@@ -26,9 +25,9 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
         os << std::get<target::HardcodedRegister>(v);
     } else if (std::holds_alternative<Variable>(v)) {
         auto var = std::get<Variable>(v);
-        os << "qa_ir::Variable{name=" << var.name << ", size=" << var.type.size; 
+        os << "qa_ir::Variable{name=" << var.name << ", size=" << var.type.size;
         if (var.offset) {
-            os << ", offset=" << *var.offset ;
+            os << ", offset=" << *var.offset;
         }
         os << "}";
     } else if (std::holds_alternative<Immediate<int>>(v)) {
@@ -47,10 +46,10 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
         return std::get<target::HardcodedRegister>(v).size;
     } else if (std::holds_alternative<Variable>(v)) {
         if (std::get<Variable>(v).offset) {
-            return std::get<Variable>(v).type.points_to_size; 
+            return std::get<Variable>(v).type.points_to_size;
         }
 
-        return std::get<Variable>(v).type.size; 
+        return std::get<Variable>(v).type.size;
     } else if (std::holds_alternative<Immediate<int>>(v)) {
         return 4;
     } else {
@@ -60,7 +59,7 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
 
 [[nodiscard]] int SizeOfWhatItPointsTo(Value v) {
     if (std::holds_alternative<Variable>(v)) {
-        return std::get<Variable>(v).type.size; 
+        return std::get<Variable>(v).type.size;
     }
     throw std::runtime_error("Unknown value type");
 }

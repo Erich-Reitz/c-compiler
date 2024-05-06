@@ -1,12 +1,8 @@
 #include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
-    
+
 int sixteenByteAlign(int size) { return size % 16 == 0 ? size : size + (16 - (size % 16)); }
-
-
-
-
 
 std::optional<VirtualRegister> get_src_register(const Instruction& ins) {
     return std::visit(
@@ -18,7 +14,6 @@ std::optional<VirtualRegister> get_src_register(const Instruction& ins) {
                 }
                 return std::nullopt;
             } else if constexpr (HasRegisterSrc<decltype(arg.src)>) {
-
                 if (std::holds_alternative<VirtualRegister>(arg.src.src)) {
                     return std::get<VirtualRegister>(arg.src.src);
                 }
@@ -38,7 +33,7 @@ std::optional<VirtualRegister> get_dest_register(const Instruction& ins) {
                     return std::get<VirtualRegister>(reg);
                 }
                 return std::nullopt;
-            }  else if constexpr (HasRegisterSrc<decltype(arg.dst)>) {
+            } else if constexpr (HasRegisterSrc<decltype(arg.dst)>) {
                 if (std::holds_alternative<VirtualRegister>(arg.dst.src)) {
                     return std::get<VirtualRegister>(arg.dst.src);
                 }

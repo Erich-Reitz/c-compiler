@@ -9,31 +9,27 @@
 #include "../target/qa_x86_registers.hpp"
 
 namespace qa_ir {
-    
-struct Temp; 
+
+struct Temp;
 struct Variable;
 struct ConstInt;
 
-template<typename T>
+template <typename T>
 struct Immediate {
     T numerical_value;
 };
 
-
-using Value = std::variant<Temp, target::HardcodedRegister, Variable, Immediate<int>, Immediate<float>>;
+using Value =
+    std::variant<Temp, target::HardcodedRegister, Variable, Immediate<int>, Immediate<float>>;
 
 struct Variable {
     std::string name = "";
     ast::DataType type = ast::DataType{.name = "", .size = 0};
-    Value *offset = nullptr;
+    Value* offset = nullptr;
 
-    [[nodiscard]] auto is_float() const -> bool {
-        return type.name == "float";
-    }
+    [[nodiscard]] auto is_float() const -> bool { return type.name == "float"; }
 
-    [[nodiscard]] auto is_int() const -> bool {
-        return type.name == "int";
-    }
+    [[nodiscard]] auto is_int() const -> bool { return type.name == "int"; }
 };
 
 struct Temp {
@@ -41,10 +37,7 @@ struct Temp {
     int size;
 };
 
-
 std::ostream& operator<<(std::ostream& os, const Value& v);
-
-
 
 template <typename T>
 concept IsRegister = std::is_same<T, target::HardcodedRegister>::value ||
