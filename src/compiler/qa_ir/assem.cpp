@@ -86,9 +86,7 @@ auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
     Value* offset = nullptr;
     if (node->offset.has_value()) {
         offset = new Value(std::visit(rhs_visitor, node->offset.value().node));
-        std::cout << "adding temp of type: " << node->type << std::endl;
         const auto result = ctx.AddTemp(ast::DataType{.base_type = node->type.points_to});
-        std::cout << "result: " << result << std::endl;
         const auto location = Variable{.name = node->name, .type = node->type, .offset = offset};
         auto bin_op_instruction = Mov{.dst = result, .src = location};
         ops.push_back(bin_op_instruction);
@@ -108,12 +106,11 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-    std::cout << "gen_rhs(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx)" << std::endl;
+
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
 
-    std::cout << "lhs_value: " << lhs_value << std::endl;
-    std::cout << "rhs_value: " << rhs_value << std::endl;
+
 
     static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
         {ast::BinOpKind::Add,
@@ -179,14 +176,12 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
             ops.push_back(bin_op_instruction);
             rhs_variable.offset = new Value(new_offset);
         }
-        std::cout << "returning rhs_variable: " << rhs_variable << std::endl;
         return rhs_variable;
     } else {
         const auto resulting_type = ResultingTypeForBinOp(lhs_type, rhs_type, bin_op);
         auto dst = ctx.AddTemp(resulting_type);
         auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
         ops.push_back(bin_op_instruction);
-        std::cout << "returning dst: " << dst << std::endl;
         return dst;
     }
 }
@@ -213,8 +208,6 @@ auto gen_rhs(op_list& ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value {
 }
 
 auto gen_rhs(op_list& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value {
-    std::cout << "gen_rhs(op_list &ops, ast::DerefReadAstNode* node, F_Ctx& ctx)" << std::endl;
-    std::cout << node->toString() << std::endl;
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
@@ -371,15 +364,11 @@ auto gen_cond(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_l
     auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-    std::cout << "gen_cond(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_label, "
-                 "Label false_label)"
-              << std::endl;
+
 
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
 
-    std::cout << "lhs_value: " << lhs_value << std::endl;
-    std::cout << "rhs_value: " << rhs_value << std::endl;
     auto compareInstruction = Compare{.left = lhs_value, .right = rhs_value};
     ops.push_back(compareInstruction);
     std::map<ast::BinOpKind, std::function<void(Value, Value)>> bin_op_map{

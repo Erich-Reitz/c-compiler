@@ -62,7 +62,7 @@ namespace qa_ir {
                              .indirect_level = 1};
     }
 
-    std::cout << "lhs: " << lhs << " rhs: " << rhs << std::endl;
+
     throw std::runtime_error("Invalid types for binary operation");
 }
 

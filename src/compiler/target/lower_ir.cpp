@@ -244,10 +244,7 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, ins_list& instru
 
         throw std::runtime_error("Unsupported offset type");
     }
-    std::cout << "get_stack_location: " << v.name << std::endl;
-    for (const auto& en : variable_offset) {
-        std::cout << "variable_offset: " << en.first << " " << en.second.offset << std::endl;
-    }
+
     return variable_offset.at(v.name);
 }
 
@@ -301,7 +298,6 @@ ins_list Ctx::toLocation(Location l, qa_ir::Value v) {
 }
 
 [[nodiscard]] ins_list LowerInstruction(qa_ir::Mov move, Ctx& ctx) {
-    std::cout << "lowering: " << move.dst << " " << move.src << std::endl;
     ins_list result;
     auto dest = move.dst;
     auto src = move.src;
@@ -865,7 +861,6 @@ auto LowerInstruction(qa_ir::Jump arg, Ctx& ctx) -> ins_list {
     for (const auto& f : frames) {
         ins_list instructions;
         Ctx ctx = Ctx{};
-        std::cout << "Lowering frame: " << f.name << std::endl;
         for (const auto& op : f.instructions) {
             auto ins = GenerateInstructionsForOperation(op, ctx);
             if (ins.empty()) {
