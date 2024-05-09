@@ -139,6 +139,9 @@ RUN_TEST_CASE(BasicDeref, "ptr_set.c");
 RUN_TEST_CASE(ArrayGetterAlternativeSyntax, "array_getter_after_passed_ptr_arth.c");
 
 RUN_TEST_CASE(PointerArthAddRhs, "ptr_arth_addition_rhs.c");
+RUN_TEST_CASE(PointerArthRhs2, "ptr_arth_addition_subtraction_rhs2.c");
+RUN_TEST_CASE(PointerArthLhs, "ptr_arth_lhs.c");
+RUN_TEST_CASE(PointerArthLhs2, "ptr_arth_lhs2.c");
 
 // /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");

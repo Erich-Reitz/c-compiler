@@ -495,8 +495,14 @@ auto gen_stmt(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void {
         ops.push_back(move_instruction);
     } else if (node->lhs.is_deref_write()) {
         auto dst = std::visit(rhs_visitor, node->lhs.node);
-        const auto deref_instruction = DerefStore{.dst = dst, .src = src};
-        ops.push_back(deref_instruction);
+        const auto dst_datatype = GetDataType(dst);
+        if (dst_datatype.base_type == ast::BaseType::POINTER) {
+            const auto deref_instruction = DerefStore{.dst = dst, .src = src};
+            ops.push_back(deref_instruction);
+        } else {
+            const auto move_instruction = Mov{.dst = dst, .src = src};
+            ops.push_back(move_instruction);
+        }
     } else {
         throw std::runtime_error("Unsupported node type.");
     }

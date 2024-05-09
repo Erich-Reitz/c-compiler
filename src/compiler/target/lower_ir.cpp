@@ -707,7 +707,6 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
         if (variable.offset && variable.type.base_type == ast::BaseType::ARRAY) {
             const auto base = ctx.variable_offset.at(variable.name);
             result.push_back(Lea{.dst = base_reg, .src = base});
-
             const auto offsetVariable = std::get<qa_ir::Temp>(*variable.offset);
             const auto offsetVariableReg = ctx.AllocateNewForTemp(offsetVariable);
             const auto upperreg = ctx.NewIntegerRegister(8);

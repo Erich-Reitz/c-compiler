@@ -38,10 +38,13 @@ auto __EqualsSignLookahead(const unsigned long current, const std::vector<Token>
             return false;
         }
         if (g_tokens[i].type == TokType::TOKEN_LEFT_PAREN) {
-            return false;
+            margin++;
         }
         if (g_tokens[i].type == TokType::TOKEN_RIGHT_PAREN) {
-            return false;
+            if (margin == 0) {
+                return false;
+            }
+            margin--;
         }
         if (g_tokens[i].type == TokType::TOKEN_LEFT_BRACKET) {
             margin++;
