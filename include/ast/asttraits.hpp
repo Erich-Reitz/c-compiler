@@ -21,28 +21,23 @@ concept ContainsTypeDeclaration = requires(T t) {
 [[nodiscard]] DataType toDataType(const std::vector<st::DeclarationSpecifier>& dss) {
     for (const auto& ds : dss) {
         if (ds.typespecifier.type == st::TypeSpecifier::Type::INT) {
-            return DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
+            return DataType::int_type();
         } else if (ds.typespecifier.type == st::TypeSpecifier::Type::FLOAT) {
-            return DataType{.name = "float", .size = 4, .is_pointer = false, .points_to_size = 0};
+            return DataType::float_type();
         }
     }
-    return DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
+    throw std::runtime_error("Unsupported type specifier");
 }
 
 [[nodiscard]] DataType toDataType(const st::Declarator& decl, DataType pointsTo) {
     const auto directDeclarator = decl.directDeclarator;
     if (directDeclarator.kind == st::DeclaratorKind::VARIABLE) {
         return DataType{
-            .name = pointsTo.name, .size = 8, .is_pointer = true, .points_to_size = pointsTo.size};
+            .base_type = BaseType::POINTER, .points_to = pointsTo.base_type, .indirect_level = 1};
     } else if (directDeclarator.kind == st::DeclaratorKind::ARRAY) {
         const auto info = std::get<st::ArrayDirectDeclarator>(directDeclarator.declarator);
         const auto expression = std::get<std::shared_ptr<st::PrimaryExpression>>(info.size);
-        // not a pointer until it decays
-        return DataType{.name = pointsTo.name,
-                        .size = pointsTo.size * expression->value,
-                        .is_pointer = false,
-                        .points_to_size = pointsTo.size,
-                        .is_array = true};
+        return DataType::array_type(expression->value, pointsTo.base_type);
     } else {
         throw std::runtime_error("Unsupported declarator kind");
     }

@@ -58,10 +58,11 @@ auto gen_fun_prologue(const ast::FrameAstNode* function, F_Ctx& ctx) -> op_list 
         auto var = std::make_shared<ast::VariableAstNode>(param.name, param.type, std::nullopt);
         Value dst = ctx.AddVariable(var->name, var->type);
         if (static_cast<size_t>(idx) >= target::param_regs.size()) {
-            const auto i = DefineStackPushed{.name = param.name, .size = param.type.size};
+            const auto i = DefineStackPushed{.name = param.name, .size = param.type.GetSize()};
             instructions.push_back(i);
         } else {
-            const auto param_register = target::param_register_by_convention(idx, param.type.size);
+            const auto param_register =
+                target::param_register_by_convention(idx, param.type.GetSize());
             const auto move_instruction = MovR{.dst = dst, .src = param_register};
             instructions.push_back(move_instruction);
         }
@@ -85,16 +86,19 @@ auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
     Value* offset = nullptr;
     if (node->offset.has_value()) {
         offset = new Value(std::visit(rhs_visitor, node->offset.value().node));
-        return Variable{.name = node->name, .type = node->type, .offset = offset};
+        std::cout << "adding temp of type: " << node->type << std::endl;
+        const auto result = ctx.AddTemp(ast::DataType{.base_type = node->type.points_to});
+        std::cout << "result: " << result << std::endl;
+        const auto location = Variable{.name = node->name, .type = node->type, .offset = offset};
+        auto bin_op_instruction = Mov{.dst = result, .src = location};
+        ops.push_back(bin_op_instruction);
+        return result;
     }
 
-    if (var.type.is_array) {
-        const ast::DataType pointer_type = {.name = var.type.name,
-                                            .size = 8,
-                                            .is_pointer = true,
-                                            .points_to_size = var.type.points_to_size};
-        return Variable{.name = node->name, .type = pointer_type, .offset = offset};
-    }
+    // if (var.type.base_type == ast::BaseType::ARRAY) {
+    //     return Variable{
+    //         .name = node->name, .type = ast::decay_array_type(var.type), .offset = nullptr};
+    // }
 
     const auto result = Variable{.name = node->name, .type = node->type, .offset = offset};
     return result;
@@ -104,9 +108,12 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-
+    std::cout << "gen_rhs(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx)" << std::endl;
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
+
+    std::cout << "lhs_value: " << lhs_value << std::endl;
+    std::cout << "rhs_value: " << rhs_value << std::endl;
 
     static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
         {ast::BinOpKind::Add,
@@ -142,10 +149,46 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
 
     auto bin_op_func = bin_op_map.at(bin_op);
     // TODO: fix the size on this
-    auto dst = ctx.AddTemp(4);
-    auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
-    ops.push_back(bin_op_instruction);
-    return dst;
+    const auto lhs_type = GetDataType(lhs_value);
+    const auto rhs_type = GetDataType(rhs_value);
+
+    if ((lhs_type.base_type == ast::BaseType::POINTER ||
+         lhs_type.base_type == ast::BaseType::ARRAY) &&
+        ast::is_arithmetic(bin_op)) {
+        // if the left hand side is a pointer,
+        auto lhs_variable = std::get<Variable>(lhs_value);
+        if (lhs_variable.offset == nullptr) {
+            lhs_variable.offset = new Value(rhs_value);
+        } else {
+            const auto new_offset = ctx.AddTemp(ast::DataType::int_type());
+            auto bin_op_instruction = bin_op_func(new_offset, *lhs_variable.offset, rhs_value);
+            ops.push_back(bin_op_instruction);
+            lhs_variable.offset = new Value(new_offset);
+        }
+        return lhs_variable;
+    } else if ((rhs_type.base_type == ast::BaseType::POINTER ||
+                rhs_type.base_type == ast::BaseType::ARRAY) &&
+               ast::is_arithmetic(bin_op)) {
+        // if the left hand side is a pointer,
+        auto rhs_variable = std::get<Variable>(rhs_value);
+        if (rhs_variable.offset == nullptr) {
+            rhs_variable.offset = new Value(lhs_value);
+        } else {
+            const auto new_offset = ctx.AddTemp(ast::DataType::int_type());
+            auto bin_op_instruction = bin_op_func(new_offset, *rhs_variable.offset, lhs_value);
+            ops.push_back(bin_op_instruction);
+            rhs_variable.offset = new Value(new_offset);
+        }
+        std::cout << "returning rhs_variable: " << rhs_variable << std::endl;
+        return rhs_variable;
+    } else {
+        const auto resulting_type = ResultingTypeForBinOp(lhs_type, rhs_type, bin_op);
+        auto dst = ctx.AddTemp(resulting_type);
+        auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
+        ops.push_back(bin_op_instruction);
+        std::cout << "returning dst: " << dst << std::endl;
+        return dst;
+    }
 }
 
 auto gen_rhs(op_list& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value {
@@ -158,41 +201,57 @@ auto gen_rhs(op_list& ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value {
     };
 
     auto variable = std::visit(rhs_visitor, node->expr.node);
-    const auto dst = ctx.AddTemp(target::address_size);
+    const auto variable_type = GetDataType(variable);
+    const auto previous_level = variable_type.indirect_level;
+    const auto dst = ctx.AddTemp(ast::DataType{.base_type = ast::BaseType::POINTER,
+                                               .points_to = variable_type.base_type,
+                                               .array_size = 0,
+                                               .indirect_level = previous_level + 1});
     const auto addr_instruction = Addr{.dst = dst, .src = variable};
     ops.push_back(addr_instruction);
     return dst;
 }
 
 auto gen_rhs(op_list& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value {
+    std::cout << "gen_rhs(op_list &ops, ast::DerefReadAstNode* node, F_Ctx& ctx)" << std::endl;
+    std::cout << node->toString() << std::endl;
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
+    const auto base_expr = node->base_expr.node;
 
     auto src = std::visit(rhs_visitor, node->base_expr.node);
     if (std::holds_alternative<Variable>(src)) {
         const auto variable = std::get<Variable>(src);
-        const auto astVariable = ctx.variables.at(variable.name);
-        const auto variableType = astVariable.type;
-        assert(variableType.is_pointer);
+        assert(variable.type.base_type == ast::BaseType::POINTER ||
+               variable.type.base_type == ast::BaseType::ARRAY);
         const auto depth = node->deref_depth();
 
-        const auto dest = ctx.AddTemp(variableType.points_to_size);
+        auto dest = ctx.AddTemp(ast::dereference_type(variable.type));
         const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
         ops.push_back(deref_instruction);
         return dest;
     }
 
-    // if (std::holds_alternative<Temp>(src)) {
-    //     const auto temp = std::get<Temp>(src);
-    //     const auto depth = node->deref_depth();
-    //     //todo: fix the size on this
-    //     const auto dest = ctx.AddTemp(4);
-    //     const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
-    //     ops.push_back(deref_instruction);
-    //     return dest;
-
-    // }
+    if (std::holds_alternative<Temp>(src)) {
+        const auto variable = std::get<Temp>(src);
+        const auto variableType = variable.type;
+        assert(variableType.base_type == ast::BaseType::POINTER ||
+               variableType.base_type == ast::BaseType::ARRAY);
+        const auto depth = node->deref_depth();
+        // TODO: arbitrary pointers** is messing this up
+        const auto indirect_level = variableType.indirect_level;
+        auto dest = ctx.AddTemp(ast::DataType{.base_type = variableType.points_to,
+                                              .points_to = ast::BaseType::NONE,
+                                              .array_size = 0,
+                                              .indirect_level = indirect_level - 1});
+        if (dest.type.indirect_level != 0) {
+            dest.type.points_to = variableType.points_to;
+        }
+        const auto deref_instruction = Deref{.dst = dest, .src = src, .depth = depth};
+        ops.push_back(deref_instruction);
+        return dest;
+    }
     throw std::runtime_error("Unsupported node type.");
 }
 
@@ -218,8 +277,8 @@ auto gen_rhs(op_list& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx) -> Value 
         auto arg_value = std::visit(rhs_visitor, arg.node);
         args.push_back(arg_value);
     }
-    const auto return_size = node->returnType.size;
-    const auto dst = ctx.AddTemp(return_size);
+
+    const auto dst = ctx.AddTemp(node->returnType);
     const auto call_instruction = Call{.name = node->callName, .args = args, .dst = dst};
     ops.push_back(call_instruction);
     return dst;
@@ -312,9 +371,15 @@ auto gen_cond(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_l
     auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
+    std::cout << "gen_cond(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_label, "
+                 "Label false_label)"
+              << std::endl;
 
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
+
+    std::cout << "lhs_value: " << lhs_value << std::endl;
+    std::cout << "rhs_value: " << rhs_value << std::endl;
     auto compareInstruction = Compare{.left = lhs_value, .right = rhs_value};
     ops.push_back(compareInstruction);
     std::map<ast::BinOpKind, std::function<void(Value, Value)>> bin_op_map{
@@ -402,6 +467,10 @@ auto gen_stmt(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void {
         auto var = node->lhs.get_variable_name();
         auto var_type = node->lhs.get_variable_type();
         auto dst = ctx.AddVariable(var, var_type);
+        // TODO: this is a hack for getting arrays to be defined in the next pass
+        if (var_type.base_type == ast::BaseType::ARRAY) {
+            ops.push_back(DefineArray{.name = var, .type = var_type});
+        }
         return;
     }
 

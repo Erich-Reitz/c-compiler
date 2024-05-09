@@ -11,11 +11,10 @@ struct StackLocation {
     bool is_computed = false;
     Register src = {};
     int scale = 0;
+    int offest_from_base = 0;
 };
 
 using Location = std::variant<Register, StackLocation>;
-
-int SizeOf(const Location& loc);
 
 [[nodiscard]] std::string stack_location_at_asm(StackLocation sl);
 

@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 namespace target {
+
 std::string stack_location_at_asm(target::StackLocation sl) {
     if (sl.is_computed) {
         if (std::holds_alternative<target::VirtualRegister>(sl.src)) {
@@ -20,14 +21,19 @@ std::string stack_location_at_asm(target::StackLocation sl) {
         if (initalOffset == 0) {
             // don't return relative to rbp
             // TODO: i dunno
-
-            return " [0+" + register_to_asm(base_register) + scale_string + "]";
+            if (sl.offest_from_base != 0) {
+                return " [" + register_to_asm(base_register) + " + " +
+                       std::to_string(sl.offest_from_base) + " " + scale_string + "]";
+            }
+            return " [" + register_to_asm(base_register) + scale_string + "]";
         }
 
         // if we are using it as an offset, then its size is 8.
         // TODO: issue a clear instruction
-        return " [rbp-" + std::to_string(initalOffset) + " + " + register_to_asm(base_register) +
-               scale_string + "]";
+        const auto result = " [rbp-" + std::to_string(initalOffset) + " + " +
+                            register_to_asm(base_register) + scale_string + "]";
+
+        return result;
     }
 
     if (sl.offset >= 0) {

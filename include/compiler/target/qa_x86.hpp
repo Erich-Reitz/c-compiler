@@ -8,10 +8,11 @@
 #include <vector>
 
 #include "qa_x86_instructions.hpp"
+#include "qa_x86_locations.hpp"
 #include "qa_x86_registers.hpp"
 
 namespace target {
-
+[[nodiscard]] int SizeOf(const Location& loc);
 int sixteenByteAlign(int size);
 
 std::optional<int> get_src_virtual_id_if_present(const Instruction& ins);

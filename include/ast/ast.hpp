@@ -183,12 +183,11 @@ struct VariableAstNode : public AstNode {
                              std::optional<Stmt> p_offset)
         : name(p_name), type(p_type), offset(std::move(p_offset)) {}
     [[nodiscard]] auto toString() const -> std::string override {
-        const auto type_description = type.name;
         if (offset.has_value()) {
-            return name + " : " + type_description + " " + "[" + offset.value().toString() + "]";
+            return name + " : " + dt_to_string(type) + " " + "[" + offset.value().toString() + "]";
         }
 
-        return name + " : " + type_description;
+        return name + " : " + dt_to_string(type);
     }
 };
 

@@ -145,8 +145,7 @@ auto translate(const std::shared_ptr<st::FunctionCallExpression>& expr, Ctx& ctx
         args.push_back(std::move(e));
     }
 
-    const auto faux_return_type =
-        DataType{.name = "int", .size = 4, .is_pointer = false, .points_to_size = 0};
+    const auto faux_return_type = DataType::int_type();
 
     return std::make_shared<FunctionCallAstNode>(expr->name, std::move(args), faux_return_type);
 }

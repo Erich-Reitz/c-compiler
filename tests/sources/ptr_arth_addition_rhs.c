@@ -1,4 +1,4 @@
-// EXPECTED_RETURN: 4
+// EXPECTED_RETURN: 9
 
 
 int main() {
@@ -6,6 +6,7 @@ int main() {
     for (int i =0; i < 10; i = i + 1) {
         arr[i] = i; 
     }
-
-    return *(arr + 4) ; 
+    int five = 5; 
+    int four = 4;
+    return *(five + arr + four); 
 }

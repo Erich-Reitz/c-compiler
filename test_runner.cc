@@ -138,7 +138,7 @@ RUN_TEST_CASE(IntDerefAddition, "int_deref_addition.c");
 RUN_TEST_CASE(BasicDeref, "ptr_set.c");
 RUN_TEST_CASE(ArrayGetterAlternativeSyntax, "array_getter_after_passed_ptr_arth.c");
 
-RUN_TEST_CASE(PointerArthBasic, "ptr_lhs_addition.c");
+RUN_TEST_CASE(PointerArthAddRhs, "ptr_arth_addition_rhs.c");
 
 // /** Comparision operators  **/
 RUN_TEST_CASE(IntEqualityEq_NegativeCase, "int_equality_eq_negative.c");
@@ -185,7 +185,7 @@ RUN_TEST_CASE(ArrayGetterBasic, "array_getter_basic.c");
 RUN_TEST_CASE(ArrayGetterAfterPassed, "array_getter_after_passed.c");
 RUN_TEST_CASE(ArrayGetterAfterPassedSimple, "array_getter_after_passed_simple.c");
 RUN_TEST_CASE(TrailingArrayGetter, "trailing_array_getter.c");
-
+RUN_TEST_CASE(ArrayReturnLast, "array_return_last.c");
 /** Floats */
 RUN_TEST_CASE(FloatBasic, "float_basic.c");
 RUN_TEST_CASE(FloatBasic2, "float_basic_2.c");

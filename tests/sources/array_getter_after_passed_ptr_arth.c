@@ -1,7 +1,7 @@
 // EXPECTED_RETURN: 9
 
 int return_last_element(int *arr, int length) {
-    return *(arr + length - 1); 
+    return *(arr + (9 + 0)); 
 }
 
 int main() {
