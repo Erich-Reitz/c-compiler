@@ -3,7 +3,8 @@
 #include <set>
 
 auto isTypeSpecifier(const Token token) -> bool {
-    return token.type == TokType::TOKEN_T_INT || token.type == TokType::TOKEN_T_VOID || token.type == TokType::TOKEN_T_FLOAT;
+    return token.type == TokType::TOKEN_T_INT || token.type == TokType::TOKEN_T_VOID ||
+           token.type == TokType::TOKEN_T_FLOAT;
 }
 
 auto isStmtBegin(const Token t) -> bool {
@@ -37,10 +38,13 @@ auto __EqualsSignLookahead(const unsigned long current, const std::vector<Token>
             return false;
         }
         if (g_tokens[i].type == TokType::TOKEN_LEFT_PAREN) {
-            return false;
+            margin++;
         }
         if (g_tokens[i].type == TokType::TOKEN_RIGHT_PAREN) {
-            return false;
+            if (margin == 0) {
+                return false;
+            }
+            margin--;
         }
         if (g_tokens[i].type == TokType::TOKEN_LEFT_BRACKET) {
             margin++;

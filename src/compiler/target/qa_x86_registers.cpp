@@ -37,14 +37,16 @@ bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs) {
     return is_float_register(std::get<HardcodedRegister>(p_reg).reg);
 }
 
-
-
-
 std::string register_to_asm(Register v_reg) {
     if (std::holds_alternative<VirtualRegister>(v_reg)) {
-        throw std::runtime_error("cannot convert VirtualRegister to asm"); 
+        const auto reg = std::get<VirtualRegister>(v_reg);
+        if (reg.kind == VirtualRegisterKind::FLOAT) {
+            return "xmm" + std::to_string(reg.id);
+        }
+        return "r" + std::to_string(reg.id);
     }
-    const auto reg = std::get<HardcodedRegister>(v_reg); 
+
+    const auto reg = std::get<HardcodedRegister>(v_reg);
 
     const auto base = reg.reg;
     const auto size = reg.size;
@@ -105,4 +107,4 @@ std::string register_to_asm(Register v_reg) {
     return HardcodedRegister{.reg = param_regs[idx], .size = size};
 }
 
-}
+}  // namespace target

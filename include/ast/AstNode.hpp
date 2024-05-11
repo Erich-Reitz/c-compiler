@@ -4,9 +4,7 @@
 
 namespace ast {
 
-enum class BinOpKind { Add, Sub, Eq, Gt, Lt, Neq };
-
-[[nodiscard]] auto bin_op_to_string(BinOpKind kind) -> std::string;
+enum class BinOpKind { Add, Sub, Mul, Div, Eq, Gt, Lt, Neq };
 
 class AstNode {
    public:

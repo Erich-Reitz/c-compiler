@@ -1,9 +1,9 @@
 #pragma once
 
-#include "qa_x86_instructions.hpp"
-
 #include <string>
 #include <vector>
+
+#include "qa_x86_instructions.hpp"
 
 namespace target {
 struct Frame {
@@ -11,4 +11,4 @@ struct Frame {
     std::vector<Instruction> instructions;
     int size = 0;
 };
-}
+}  // namespace target

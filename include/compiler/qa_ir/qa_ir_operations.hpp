@@ -27,6 +27,13 @@ struct Ret {
 
 std::ostream& operator<<(std::ostream& os, const Ret& ret);
 
+struct DefineArray {
+    std::string name;
+    ast::DataType type;
+};
+
+std::ostream& operator<<(std::ostream& os, const DefineArray& ret);
+
 struct Add {
     Value dst;
 
@@ -173,13 +180,23 @@ struct DefineStackPushed {
 
 std::ostream& operator<<(std::ostream& os, const DefineStackPushed& dsp);
 
-using Operation =
-    std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref, Compare, Jump, Equal,
-                 ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef,
-                 Call, DerefStore, GreaterThan, ConditionalJumpLess, NotEqual, LessThan>;
+struct PointerOffset {
+    Value dst;
+
+    ast::DataType basisType;
+    Value base;
+    Value offset;
+};
+
+std::ostream& operator<<(std::ostream& os, const PointerOffset& pointer_offset);
+
+using Operation = std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref, Compare,
+                               Jump, Equal, ConditionalJumpEqual, ConditionalJumpGreater,
+                               ConditionalJumpNotEqual, LabelDef, Call, DerefStore, GreaterThan,
+                               ConditionalJumpLess, NotEqual, LessThan, PointerOffset, DefineArray>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
                            ConditionalJumpLess>;
 
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
-}
+}  // namespace qa_ir

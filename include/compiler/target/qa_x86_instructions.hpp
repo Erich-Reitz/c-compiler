@@ -1,29 +1,32 @@
 #pragma once
 
 #include "codegenCtx.hpp"
-
 #include "qa_x86_locations.hpp"
 #include "qa_x86_registers.hpp"
 
 namespace target {
 
-template<typename T>
+template <typename T>
 concept HasToAsmMethod = requires(T t, CodegenContext& ctx) {
-    { t.to_asm(ctx) } ;
+    { t.to_asm(ctx) };
 };
-
 
 auto to_asm_constant(int value) -> std::string;
 
+struct x86Instruction {
+    virtual auto to_asm(CodegenContext& ctx) const -> void = 0;
+    virtual ~x86Instruction() = default;
 
+    virtual auto debug_str() const -> std::string { return "x86Instruction"; }
+};
 
 template <typename T>
-struct ImmediateLoad  {
+struct ImmediateLoad : x86Instruction {
     Register dst;
     T value;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void {
+    ImmediateLoad(Register p_dst, T p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void {
         const auto hardcoded_dest = std::get<HardcodedRegister>(dst);
         if (is_float_register(hardcoded_dest.reg)) {
             const auto float_label = ctx.DefineFloatConstant(value);
@@ -33,246 +36,309 @@ struct ImmediateLoad  {
             const auto ins = "mov " + register_to_asm(dst) + ", " + to_asm_constant(value);
             ctx.AddInstruction(ins);
         }
-     }
-} ; 
+    }
 
-struct Mov {
+    auto debug_str() const -> std::string override {
+        return "ImmediateLoad<" + std::to_string(value) + ">";
+    }
+};
+
+struct Mov : public x86Instruction {
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Mov(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Mov<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-
-struct Load {
+struct Load : public x86Instruction {
     Register dst;
     StackLocation src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Load(Register p_dst, StackLocation p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Load<" + register_to_asm(dst) + ", " + stack_location_at_asm(src) + ">";
+    }
 };
 
-struct ZeroExtend {
+struct ZeroExtend : public x86Instruction {
     Register dst;
     Register src;
 
-
-    auto to_asm(CodegenContext& ctx) const -> void ; 
+    ZeroExtend(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "ZeroExtend<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct StoreI {
+struct StoreI : public x86Instruction {
     StackLocation dst;
-    void *src;
     int value;
-
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    StoreI(StackLocation p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "StoreI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
+    }
 };
 
-struct StoreF {
+struct StoreF : public x86Instruction {
     StackLocation dst;
     Register src;
     float value;
-
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    StoreF(StackLocation p_dst, Register p_src, float p_value)
+        : dst(p_dst), src(p_src), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "StoreF<" + stack_location_at_asm(dst) + ", " + register_to_asm(src) + ", " +
+               std::to_string(value) + ">";
+    }
 };
 
-
-
-
-struct Store {
+struct Store : public x86Instruction {
     StackLocation dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Store(StackLocation p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Store<" + stack_location_at_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct JumpGreater {
+struct JumpGreater : public x86Instruction {
     std::string label;
-    void* src = nullptr;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    JumpGreater(std::string p_label) : label(p_label) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "JumpGreater<" + label + ">"; }
 };
 
-struct JumpLess {
+struct JumpLess : public x86Instruction {
     std::string label;
-    void* src = nullptr;
-    void* dst = nullptr;
-
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    JumpLess(std::string p_label) : label(p_label) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "JumpLess<" + label + ">"; }
 };
 
-struct Jump {
+struct Jump : public x86Instruction {
     std::string label;
-    void* src = nullptr;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    Jump(std::string p_label) : label(p_label) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "Jump<" + label + ">"; }
 };
 
-struct JumpEq {
+struct JumpEq : public x86Instruction {
     std::string label;
-    void* src = nullptr;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    JumpEq(std::string p_label) : label(p_label) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "JumpEq<" + label + ">"; }
 };
 
-
-
-struct AddI {
+struct AddI : public x86Instruction {
     Register dst;
     int value;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    AddI(Register p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "AddI<" + register_to_asm(dst) + ", " + std::to_string(value) + ">";
+    }
 };
 
-
-
-
-
-
-struct SubI {
+struct SubI : public x86Instruction {
     Register dst;
     int value;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    SubI(Register p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SubI<" + register_to_asm(dst) + ", " + std::to_string(value) + ">";
+    }
 };
 
-struct Add {
+struct Add : public x86Instruction {
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    Add(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Add<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct Sub {
+struct Sub : public x86Instruction {
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    Sub(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Sub<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct Cmp {
+struct Cmp : public x86Instruction {
     // TODO: not really dest / src
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Cmp(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Cmp<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-
-
-struct CmpI {
+struct CmpI : public x86Instruction {
     Register dst;
-    void* src = nullptr;
     int value;
-    
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
-
-}; 
-
-struct CmpF {
-    Register dst;
-    Register src; 
-
-
-     auto to_asm(CodegenContext& ctx) const -> void ; 
-}; 
-
-struct SetA {
-    Register dst;
-    void* src = nullptr;
-
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    CmpI(Register p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "CmpI<" + register_to_asm(dst) + ", " + std::to_string(value) + ">";
+    }
 };
 
-struct SetEAl {
+struct CmpF : public x86Instruction {
     Register dst;
-    void* src = nullptr;
+    Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    CmpF(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "CmpF<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct SetGAl {
+struct SetA : public x86Instruction {
     Register dst;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    SetA(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "SetA<" + register_to_asm(dst) + ">"; }
 };
 
-struct SetNeAl {
+struct SetEAl : public x86Instruction {
     Register dst;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    SetEAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetEAl<" + register_to_asm(dst) + ">";
+    }
 };
 
-struct SetLAl {
+struct SetGAl : public x86Instruction {
     Register dst;
-    void* src = nullptr;
 
-
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    SetGAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetGAl<" + register_to_asm(dst) + ">";
+    }
 };
 
-struct Label {
+struct SetNeAl : public x86Instruction {
+    Register dst;
+
+    SetNeAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetNeAl<" + register_to_asm(dst) + ">";
+    }
+};
+
+struct SetLAl : public x86Instruction {
+    Register dst;
+
+    SetLAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetLAl<" + register_to_asm(dst) + ">";
+    }
+};
+
+struct Label : public x86Instruction {
     std::string name;
-    void* src = nullptr;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Label(std::string p_name) : name(p_name) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "Label<" + name + ">"; }
 };
 
-struct Call {
+struct Call : public x86Instruction {
     std::string name;
     Register dst;
-    void* src = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Call(std::string p_name, Register p_dst) : name(p_name), dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Call<" + name + ", " + register_to_asm(dst) + ">";
+    }
 };
 
-struct Lea {
+struct Lea : public x86Instruction {
     Register dst;
     StackLocation src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    Lea(Register p_dst, StackLocation p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Lea<" + register_to_asm(dst) + ", " + stack_location_at_asm(src) + ">";
+    }
 };
 
-struct IndirectLoad {
+struct IndirectLoad : public x86Instruction {
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
-
+    IndirectLoad(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "IndirectLoad<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct IndirectStore {
+struct IndirectStore : public x86Instruction {
     Register dst;
     Register src;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
+    IndirectStore(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "IndirectStore<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
 };
 
-struct PushI {
+struct PushI : public x86Instruction {
     int src;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void ; 
+    PushI(int p_src) : src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "PushI<" + std::to_string(src) + ">"; }
 };
 
-struct Push {
+struct Push : public x86Instruction {
     Register src;
-    void* dst = nullptr;
 
-     auto to_asm(CodegenContext& ctx) const -> void; 
-}; 
+    Push(Register p_src) : src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "Push<" + register_to_asm(src) + ">"; }
+};
 
+using Instruction =
+    std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
+                 CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
+                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
+                 ImmediateLoad<float>, StoreF, SetA>;
 
-using Instruction = std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub,  Cmp,
-                 CmpI,  CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>, StoreF, SetA>;
-
-}
+}  // namespace target

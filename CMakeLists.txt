@@ -41,7 +41,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 # ---- Add executable ----
 add_executable(${PROJECT_NAME} ${headers} ${sources})
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(${PROJECT_NAME} PRIVATE -g -Wall -Wextra -Weffc++  -Wpedantic)
+    target_compile_options(${PROJECT_NAME} PRIVATE -g -Wall -Wextra -Weffc++ -Wpedantic -Wshadow -Werror)
 endif()
 
 enable_testing()

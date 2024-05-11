@@ -10,7 +10,7 @@
 #include "../include/lexer/lexer.hpp"
 #include "../include/parser/parser.hpp"
 
-#define DEBUG 0
+#define DEBUG 1
 
 [[nodiscard]] const std::string readfile(const char* sourcefile) {
     std::ifstream inFile;
@@ -51,6 +51,20 @@ void print_ir(const std::vector<qa_ir::Frame>& frames) {
     std::cout << "-----------------" << std::endl;
 }
 
+void print_target_ir(const std::vector<target::Frame>& frames) {
+    std::cout << "-----------------" << std::endl;
+    std::cout << "TARGET IR:" << std::endl;
+    for (const auto& frame : frames) {
+        std::cout << "Function: " << frame.name << std::endl;
+        for (const auto& ins : frame.instructions) {
+            std::cout << std::visit([](const auto& arg) { return arg.debug_str(); }, ins)
+                      << std::endl;
+        }
+        std::cout << "-----------------" << std::endl;
+    }
+    std::cout << "-----------------" << std::endl;
+}
+
 void write_to_file(const std::string& code, const std::string& outfile) {
     std::ofstream outFile;
     outFile.open(outfile);
@@ -74,8 +88,10 @@ int runfile(const char* sourcefile, const std::string& outfile) {
     if (DEBUG) print_ir(frames);
 
     const auto lowered_frames = target::LowerIR(frames);
+    if (DEBUG) print_target_ir(lowered_frames);
 
     const auto rewritten = target::rewrite(lowered_frames);
+
     const auto code = target::Generate(rewritten);
     write_to_file(code, outfile);
 

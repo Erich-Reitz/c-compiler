@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "st.hpp"
 #include "../lexer/token.hpp"
+#include "st.hpp"
 
 [[nodiscard]] auto parseDirectDeclartor() -> st::DirectDeclarator;
 [[nodiscard]] auto parseDeclaration() -> st::Declaration;

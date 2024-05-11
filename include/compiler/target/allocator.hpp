@@ -19,7 +19,5 @@ struct FirstLastUse {
     std::map<int, int> lastUse = {};
 };
 
-[[nodiscard]] auto getFirstUse(const Frame& frame) -> FirstLastUse;
-[[nodiscard]] auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister>;
 [[nodiscard]] auto rewrite(const std::vector<Frame>& frames) -> std::vector<Frame>;
 }  // namespace target

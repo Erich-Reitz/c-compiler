@@ -13,5 +13,9 @@ else
     exit 1
 fi
 
-# Run tests
-./build/bin/test_runner
+# Run tests with filter
+if [ -n "$1" ]; then
+    ./build/bin/test_runner --gtest_filter="*$1*"
+else
+    ./build/bin/test_runner
+fi

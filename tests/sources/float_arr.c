@@ -7,7 +7,7 @@ int main() {
     for (int i = 0; i < 10; i = i + 1) {
         arr[i] = 3.0;
     }
-    if (arr[0] < 4.0) {
+    if (arr[2] < 4.0) {
         return 30; 
     }
     return 1;

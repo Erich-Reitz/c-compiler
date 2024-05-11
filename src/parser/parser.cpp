@@ -1,17 +1,19 @@
+#include "../../include/parser/parser.hpp"
+
 #include <source_location>
 
-#include "../../include/parser/parser.hpp"
 #include "../../include/parser/syntax_utils.hpp"
 
 #define DEBUG 0
 
-
 static unsigned long current = 0;
 std::vector<Token> g_tokens;
 
-auto parser_log(const char* msg, const std::source_location loc = std::source_location::current()) -> void {
+auto parser_log(const char* msg, const std::source_location loc = std::source_location::current())
+    -> void {
     if (DEBUG) {
-        std::cout << "parser: " << msg << " at " << loc.file_name() << ":" << loc.line() << ":" << loc.column() << " current_token: " << g_tokens[current].lexeme << std::endl;
+        std::cout << "parser: " << msg << " at " << loc.file_name() << ":" << loc.line() << ":"
+                  << loc.column() << " current_token: " << g_tokens[current].lexeme << std::endl;
     }
 }
 
@@ -64,8 +66,7 @@ auto parseDeclarationSpecs() -> std::vector<st::DeclarationSpecifier> {
         } else if (peek().type == TokType::TOKEN_T_FLOAT) {
             declspecs.push_back(st::DeclarationSpecifier{
                 st::TypeSpecifier{.type = st::TypeSpecifier::Type::FLOAT, .iden = ""}});
-        }
-        else {
+        } else {
             const auto ts = st::TypeSpecifier{
                 .type = st::TypeSpecifier::Type::IDEN,
                 .iden = peek().lexeme,
@@ -189,11 +190,12 @@ auto parsePostfixExpression() -> st::Expression {
         return std::make_shared<st::FunctionCallExpression>(name, std::move(args));
     }
 
-    // left hand side of a[3] = 5; 
+    // left hand side of a[3] = 5;
     if (match(TokType::TOKEN_LEFT_BRACKET)) {
         parser_log("parsePostfixExpression(): found left bracket");
         auto expr = parseExpression();
-        const std::string name = std::get<std::shared_ptr<st::PrimaryExpression>>(primary)->idenValue;
+        const std::string name =
+            std::get<std::shared_ptr<st::PrimaryExpression>>(primary)->idenValue;
         parser_log("parsePostfixExpression(): parsed expr");
         consume(TokType::TOKEN_RIGHT_BRACKET);
         return std::make_shared<st::ArrayAccessExpression>(name, std::move(expr));
@@ -269,7 +271,7 @@ st::Expression parseEqualityExpression() {
 
 st::Expression parseAssignmentExpression() {
     if (__EqualsSignLookahead(current, g_tokens) == false) {
-        parser_log("parsing equality expression"); 
+        parser_log("parsing equality expression");
         return parseEqualityExpression();
     }
     auto lhs = parseEqualityExpression();

@@ -21,6 +21,11 @@ std::ostream& operator<<(std::ostream& os, const Ret& ret) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const DefineArray& arr) {
+    os << "define_array name=" << arr.name << ", type=" << arr.type;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Add& add) {
     os << "add dst=" << add.dst << ", left=" << add.left << ", right=" << add.right;
     return os;
@@ -123,4 +128,11 @@ std::ostream& operator<<(std::ostream& os, const DefineStackPushed& dsp) {
     os << "define_stack_pushed name=" << dsp.name << ", size=" << dsp.size;
     return os;
 }
+
+std::ostream& operator<<(std::ostream& os, const PointerOffset& pointer_offset) {
+    os << "pointer_offset dst=" << pointer_offset.dst << ", src=" << pointer_offset.base
+       << ", offset=" << pointer_offset.offset;
+    return os;
 }
+
+}  // namespace qa_ir
