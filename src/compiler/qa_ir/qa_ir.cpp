@@ -81,14 +81,7 @@ namespace qa_ir {
 bool operator<(const Temp& lhs, const Temp& rhs) { return lhs.id < rhs.id; }
 
 std::ostream& operator<<(std::ostream& os, const Temp& temp) {
-    if (temp.offset) {
-        os << "qa_ir::Temp{id=" << temp.id << ", type=" << temp.type << ", offset=" << *temp.offset
-           << "}";
-        return os;
-    }
-
-    os << "qa_ir::Temp{id=" << temp.id << ", type=" << temp.type << ", offset=" << temp.offset
-       << "}";
+    os << "qa_ir::Temp{id=" << temp.id << ", type=" << temp.type << "}";
     return os;
 }
 
@@ -108,13 +101,7 @@ std::ostream& operator<<(std::ostream& os, const Value& v) {
         os << std::get<target::HardcodedRegister>(v);
     } else if (std::holds_alternative<Variable>(v)) {
         auto var = std::get<Variable>(v);
-        if (var.offset) {
-            os << "Variable{name=" << var.name << ", type=" << var.type
-               << ", offset=" << *var.offset << "}";
-            return os;
-        }
-        os << "Variable{name=" << var.name << ", type=" << var.type << ", offset=" << var.offset
-           << "}";
+        os << "Variable{name=" << var.name << ", type=" << var.type << "}";
     } else if (std::holds_alternative<Immediate<int>>(v)) {
         os << std::get<Immediate<int>>(v).numerical_value;
     } else if (std::holds_alternative<Immediate<float>>(v)) {
@@ -131,8 +118,7 @@ int SizeOf(Value v) {
         return std::get<target::HardcodedRegister>(v).size;
     } else if (std::holds_alternative<Variable>(v)) {
         const auto var = std::get<Variable>(v);
-        const auto type = var.deduceTypeIncorporatingOffset();
-        return type.GetSize();
+        return var.type.GetSize();
     } else if (std::holds_alternative<Immediate<int>>(v)) {
         return 4;
     } else if (std::holds_alternative<Immediate<float>>(v)) {

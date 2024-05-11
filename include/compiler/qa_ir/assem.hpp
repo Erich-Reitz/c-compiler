@@ -28,12 +28,12 @@ struct F_Ctx {
     std::map<std::string, Variable> variables = {};
 
     [[nodiscard]] Value AddVariable(std::string name, ast::DataType type) {
-        variables[name] = Variable{.name = name, .type = type, .offset = nullptr};
+        variables[name] = Variable{.name = name, .type = type};
         return variables[name];
     }
 
-    [[nodiscard]] Temp AddTemp(ast::DataType type, Value* offset = nullptr) {
-        return Temp{.id = temp_counter++, .type = type, .offset = offset};
+    [[nodiscard]] Temp AddTemp(ast::DataType type) {
+        return Temp{.id = temp_counter++, .type = type};
     }
 
     [[nodiscard]] Label AddLabel() {

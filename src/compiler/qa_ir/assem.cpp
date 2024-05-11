@@ -71,7 +71,7 @@ auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
 
     assert(node != nullptr);
     const auto var = ctx.variables.at(node->name);
-    const auto result = Variable{.name = node->name, .type = node->type, .offset = nullptr};
+    const auto result = Variable{.name = node->name, .type = node->type};
     return result;
 }
 

@@ -30,7 +30,6 @@ using Value =
 struct Variable {
     std::string name = "";
     ast::DataType type = ast::DataType{.base_type = ast::BaseType::NONE};
-    Value* offset = nullptr;
 
     [[nodiscard]] auto is_immediate_float() const -> bool { return type.is_float(); };
 
@@ -39,19 +38,11 @@ struct Variable {
     [[nodiscard]] auto is_int_ptr() const -> bool { return type.is_int_ptr(); };
 
     [[nodiscard]] auto is_float_ptr() const -> bool { return type.is_float_ptr(); };
-
-    [[nodiscard]] auto deduceTypeIncorporatingOffset() const -> ast::DataType {
-        if (offset == nullptr) {
-            return type;
-        }
-        return ast::dereference_type(type);
-    }
 };
 
 struct Temp {
     int id;
     ast::DataType type = ast::DataType{.base_type = ast::BaseType::NONE};
-    Value* offset = nullptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const Value& v);
