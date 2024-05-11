@@ -23,6 +23,7 @@ struct Ctx {
     [[nodiscard]] VirtualRegister NewIntegerRegister(int size);
     [[nodiscard]] VirtualRegister NewFloatRegister(int size);
     [[nodiscard]] std::vector<Instruction> toLocation(Location l, qa_ir::Value v);
+    [[nodiscard]] std::vector<Instruction> LocationToLocation(Location l, qa_ir::Value v);
     [[nodiscard]] int get_stack_offset() const;
 
     void define_stack_pushed_variable(const std::string& name);

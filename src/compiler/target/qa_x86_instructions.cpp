@@ -196,8 +196,14 @@ auto Lea::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto IndirectLoad::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins = "mov " + register_to_asm(dst) + ", [" + register_to_asm(src) + "]";
-    ctx.AddInstruction(ins);
+    const auto hardcoded_dest = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dest)) {
+        const auto ins = "movss " + register_to_asm(dst) + ", [" + register_to_asm(src) + "]";
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "mov " + register_to_asm(dst) + ", [" + register_to_asm(src) + "]";
+        ctx.AddInstruction(ins);
+    }
 }
 
 auto IndirectStore::to_asm(CodegenContext& ctx) const -> void {

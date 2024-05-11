@@ -68,7 +68,7 @@ template <typename ImmediateType>
     }
 
     if (v_src.type.base_type == ast::BaseType::POINTER && !v_src.offset && !l_value_ctx) {
-        const auto lea = Lea{.dst = r_dst, .src = ctx->get_stack_location(v_src, result)};
+        const auto lea = Load{.dst = r_dst, .src = ctx->get_stack_location(v_src, result)};
         result.push_back(lea);
         return result;
     }
@@ -267,7 +267,6 @@ VirtualRegister Ctx::NewIntegerRegister(int size) {
     if (size == 4) {
         return VirtualRegister{.id = tempCounter++, .size = size};
     }
-
     throw std::runtime_error("Unsupported register size");
 }
 
@@ -295,6 +294,28 @@ void Ctx::define_stack_pushed_variable(const std::string& name) {
 ins_list Ctx::toLocation(Location l, qa_ir::Value v) {
     return std::visit(
         [this](auto&& arg1, auto&& arg2) { return _Value_To_Location(arg1, arg2, this); }, l, v);
+}
+
+ins_list Ctx::LocationToLocation(Location l, qa_ir::Value v) {
+    if (std::holds_alternative<qa_ir::Variable>(v)) {
+        std::vector<Instruction> result;
+        auto variable = std::get<qa_ir::Variable>(v);
+        variable.offset = nullptr;
+        const auto stackLocation = get_stack_location(variable, result);
+        const auto load_address = Load{.dst = std::get<Register>(l), .src = stackLocation};
+        result.push_back(load_address);
+        return result;
+    }
+    if (std::holds_alternative<qa_ir::Temp>(v)) {
+        std::vector<Instruction> result;
+        auto variable = std::get<qa_ir::Temp>(v);
+        const auto reg = AllocateNewForTemp(variable);
+        const auto load_address = Mov{.dst = std::get<Register>(l), .src = reg};
+        result.push_back(load_address);
+        return result;
+    }
+
+    throw std::runtime_error("Unsupported qa_ir::Value type.");
 }
 
 [[nodiscard]] ins_list LowerInstruction(qa_ir::Mov move, Ctx& ctx) {
@@ -596,8 +617,8 @@ ins_list InstructionForArth(ast::BinOpKind kind, std::optional<target::Location>
     // allocate new will return a location of a variable if it already exists
     ins_list result;
     auto dest_location = ctx.AllocateNew(dst, result);
-    auto visitor = [&](auto&& left, auto&& right) -> ins_list {
-        return InstructionForArth(kind, dest_location, left, right, ctx);
+    auto visitor = [&](auto&& left_p, auto&& right_p) -> ins_list {
+        return InstructionForArth(kind, dest_location, left_p, right_p, ctx);
     };
     const auto op = std::visit(visitor, left, right);
     std::ranges::copy(op, std::back_inserter(result));
@@ -703,52 +724,119 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
         if (variable.offset && variable.type.base_type == ast::BaseType::ARRAY) {
             const auto base = ctx.variable_offset.at(variable.name);
             result.push_back(Lea{.dst = base_reg, .src = base});
-            const auto offsetVariable = std::get<qa_ir::Temp>(*variable.offset);
-            const auto offsetVariableReg = ctx.AllocateNewForTemp(offsetVariable);
-            const auto upperreg = ctx.NewIntegerRegister(8);
-            result.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
+            if (std::holds_alternative<qa_ir::Immediate<int>>(*variable.offset)) {
+                const auto dest = ctx.AllocateNewForTemp(final_temp_dest);
+                return ctx.toLocation(dest, variable);
+            }
+            if (std::holds_alternative<qa_ir::Variable>(*variable.offset)) {
+                const auto offsetVariable = std::get<qa_ir::Variable>(*variable.offset);
+                const auto offsetVariableOffset = ctx.get_stack_location(offsetVariable, result);
+                const auto reg = ctx.NewIntegerRegister(SizeOf(offsetVariable));
+                result.push_back(Load{.dst = reg, .src = offsetVariableOffset});
+                const auto upperreg = ctx.NewIntegerRegister(8);
+                result.push_back(ZeroExtend{.dst = upperreg, .src = reg});
+                const auto base_offset = 0;  // why: ?
+                const auto offset_reg = ctx.NewIntegerRegister(8);
+                const auto offset_of_element =
+                    StackLocation{.offset = base_offset,
+                                  .is_computed = true,
+                                  .src = upperreg,
+                                  .scale = ast::SizeOf(variable.type.points_to)};
+                result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+                result.push_back(Add{.dst = base_reg, .src = offset_reg});
+                const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
+                result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
+                return result;
+            }
+            if (std::holds_alternative<qa_ir::Temp>(*variable.offset)) {
+                const auto offsetVariable = std::get<qa_ir::Temp>(*variable.offset);
+                const auto offsetVariableReg = ctx.AllocateNewForTemp(offsetVariable);
+                const auto upperreg = ctx.NewIntegerRegister(8);
+                result.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
 
-            // issue a lea
-            const auto base_offset = 0;  // why: ?
-            const auto offset_reg = ctx.NewIntegerRegister(8);
-            const auto offset_of_element =
-                StackLocation{.offset = base_offset,
-                              .is_computed = true,
-                              .src = upperreg,
-                              .scale = ast::SizeOf(variable.type.points_to)};
-            result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+                // issue a lea
+                const auto base_offset = 0;  // why: ?
+                const auto offset_reg = ctx.NewIntegerRegister(8);
+                const auto offset_of_element =
+                    StackLocation{.offset = base_offset,
+                                  .is_computed = true,
+                                  .src = upperreg,
+                                  .scale = ast::SizeOf(variable.type.points_to)};
+                result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
 
-            result.push_back(Add{.dst = base_reg, .src = offset_reg});
+                result.push_back(Add{.dst = base_reg, .src = offset_reg});
 
-            const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
-            result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
-            return result;
+                const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
+                result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
+                return result;
+            }
+            throw std::runtime_error("Unsupported offset type");
         }
 
         if (variable.offset && variable.type.base_type == ast::BaseType::POINTER) {
             const auto base = ctx.variable_offset.at(variable.name);
             result.push_back(Load{.dst = base_reg, .src = base});
+            if (std::holds_alternative<qa_ir::Immediate<int>>(*variable.offset)) {
+                const auto reg = ctx.NewIntegerRegister(target::address_size);
+                result.push_back(Load{.dst = reg, .src = base});
 
-            const auto offsetVariable = std::get<qa_ir::Temp>(*variable.offset);
-            const auto offsetVariableReg = ctx.AllocateNewForTemp(offsetVariable);
-            const auto upperreg = ctx.NewIntegerRegister(8);
-            result.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
+                const auto constant_offset =
+                    std::get<qa_ir::Immediate<int>>(*variable.offset).numerical_value;
+                const auto points_to_sz = ast::SizeOf(variable.type.points_to);
+                const auto offset = constant_offset * points_to_sz;
 
-            // issue a lea
-            const auto base_offset = 0;  // why: ?
-            const auto offset_reg = ctx.NewIntegerRegister(8);
-            const auto offset_of_element =
-                StackLocation{.offset = base_offset,
-                              .is_computed = true,
-                              .src = upperreg,
-                              .scale = ast::SizeOf(variable.type.points_to)};
-            result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+                const auto stack_location = StackLocation{.offset = 0,
+                                                          .is_computed = true,
+                                                          .src = reg,
+                                                          .scale = 1,
+                                                          .offest_from_base = offset};
+                const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
+                result.push_back(Load{.dst = finalDest, .src = stack_location});
+                return result;
+            }
+            if (std::holds_alternative<qa_ir::Variable>(*variable.offset)) {
+                const auto offsetVariable = std::get<qa_ir::Variable>(*variable.offset);
+                const auto offsetVariableOffset = ctx.get_stack_location(offsetVariable, result);
+                const auto reg = ctx.NewIntegerRegister(SizeOf(offsetVariable));
+                result.push_back(Load{.dst = reg, .src = offsetVariableOffset});
+                const auto upperreg = ctx.NewIntegerRegister(8);
+                result.push_back(ZeroExtend{.dst = upperreg, .src = reg});
+                const auto base_offset = 0;  // why: ?
+                const auto offset_reg = ctx.NewIntegerRegister(8);
+                const auto offset_of_element =
+                    StackLocation{.offset = base_offset,
+                                  .is_computed = true,
+                                  .src = upperreg,
+                                  .scale = ast::SizeOf(variable.type.points_to)};
+                result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
+                result.push_back(Add{.dst = base_reg, .src = offset_reg});
+                const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
+                result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
+                return result;
+            }
+            if (std::holds_alternative<qa_ir::Temp>(*variable.offset)) {
+                const auto offsetVariable = std::get<qa_ir::Temp>(*variable.offset);
+                const auto offsetVariableReg = ctx.AllocateNewForTemp(offsetVariable);
+                const auto upperreg = ctx.NewIntegerRegister(8);
+                result.push_back(ZeroExtend{.dst = upperreg, .src = offsetVariableReg});
 
-            result.push_back(Add{.dst = base_reg, .src = offset_reg});
+                // issue a lea
+                const auto base_offset = 0;  // why: ?
+                const auto offset_reg = ctx.NewIntegerRegister(8);
+                const auto offset_of_element =
+                    StackLocation{.offset = base_offset,
+                                  .is_computed = true,
+                                  .src = upperreg,
+                                  .scale = ast::SizeOf(variable.type.points_to)};
+                result.push_back(Lea{.dst = offset_reg, .src = offset_of_element});
 
-            const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
-            result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
-            return result;
+                result.push_back(Add{.dst = base_reg, .src = offset_reg});
+
+                const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
+                result.push_back(IndirectLoad{.dst = finalDest, .src = base_reg});
+                return result;
+            }
+            throw std::runtime_error("Unsupported offset type");
         }
 
         result.push_back(Load{.dst = base_reg, .src = ctx.get_stack_location(variable, result)});
@@ -786,7 +874,7 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
     // move the variable to a register
     const auto tempregister = ctx.NewIntegerRegister(8);
     l_value_ctx = true;
-    auto moveInstructions = ctx.toLocation(tempregister, variable_dest);
+    auto moveInstructions = ctx.LocationToLocation(tempregister, variable_dest);
     l_value_ctx = false;
     result.insert(result.end(), moveInstructions.begin(), moveInstructions.end());
     // load the value at the address
@@ -845,7 +933,73 @@ auto LowerInstruction(qa_ir::DefineArray arg, Ctx& ctx) -> ins_list {
     return result;
 }
 
-auto LowerInstruction(qa_ir::PointerOffset arg, Ctx& ctx) -> ins_list { return {}; }
+auto LowerInstruction(qa_ir::PointerOffset arg, Ctx& ctx) -> ins_list {
+    const auto base = arg.base;
+    const auto offset = arg.offset;
+    const auto base_reg = ctx.NewIntegerRegister(target::address_size);
+    const auto base_location = ctx.toLocation(base_reg, base);
+    ins_list result;
+    std::ranges::copy(base_location, std::back_inserter(result));
+    if (std::holds_alternative<qa_ir::Immediate<int>>(offset)) {
+        const auto offset_value = std::get<qa_ir::Immediate<int>>(offset).numerical_value;
+        const auto computed_stack_location =
+            StackLocation{.offset = 0,
+                          .is_computed = true,
+                          .src = base_reg,
+                          .scale = 1,
+                          .offest_from_base = offset_value * arg.basisType.GetSize()};
+        const auto final_dest = ctx.AllocateNew(arg.dst, result);
+        const auto intermediate_result_reg = ctx.NewIntegerRegister(SizeOf(arg.dst));
+        result.push_back(Lea{.dst = intermediate_result_reg, .src = computed_stack_location});
+        result.push_back(Register_To_Location(final_dest, intermediate_result_reg, ctx));
+        return result;
+    }
+    if (std::holds_alternative<qa_ir::Variable>(offset)) {
+        const auto offset_variable = std::get<qa_ir::Variable>(offset);
+        const auto offset_variable_offset = ctx.get_stack_location(offset_variable, result);
+        const auto offset_reg = ctx.NewIntegerRegister(SizeOf(offset_variable));
+        result.push_back(Load{.dst = offset_reg, .src = offset_variable_offset});
+        if (offset_reg.size != target::address_size) {
+            const auto resized_offset_reg = ctx.NewIntegerRegister(target::address_size);
+            result.push_back(ZeroExtend{.dst = resized_offset_reg, .src = offset_reg});
+            // use the resized offset to compute the value to add to the address
+            const auto computed_offset_reg = ctx.NewIntegerRegister(target::address_size);
+            result.push_back(Lea{.dst = computed_offset_reg,
+                                 .src = StackLocation{.offset = 0,
+                                                      .is_computed = true,
+                                                      .src = resized_offset_reg,
+                                                      .scale = arg.basisType.GetSize()}});
+
+            result.push_back(Add{.dst = base_reg, .src = computed_offset_reg});
+            const auto final_dest = ctx.AllocateNew(arg.dst, result);
+            result.push_back(Register_To_Location(final_dest, base_reg, ctx));
+            return result;
+        }
+        throw std::runtime_error("Unsupported offset type");
+    }
+    if (std::holds_alternative<qa_ir::Temp>(offset)) {
+        const auto offset_temp = std::get<qa_ir::Temp>(offset);
+        const auto offset_reg = ctx.AllocateNewForTemp(offset_temp);
+        if (SizeOf(offset_reg) != target::address_size) {
+            const auto resized_offset_reg = ctx.NewIntegerRegister(target::address_size);
+            result.push_back(ZeroExtend{.dst = resized_offset_reg, .src = offset_reg});
+            // use the resized offset to compute the value to add to the address
+            const auto computed_offset_reg = ctx.NewIntegerRegister(target::address_size);
+            result.push_back(Lea{.dst = computed_offset_reg,
+                                 .src = StackLocation{.offset = 0,
+                                                      .is_computed = true,
+                                                      .src = resized_offset_reg,
+                                                      .scale = arg.basisType.GetSize()}});
+
+            result.push_back(Add{.dst = base_reg, .src = computed_offset_reg});
+            const auto final_dest = ctx.AllocateNew(arg.dst, result);
+            result.push_back(Register_To_Location(final_dest, base_reg, ctx));
+            return result;
+        }
+        throw std::runtime_error("Unsupported offset type");
+    }
+    throw std::runtime_error("Unsupported offset type");
+}
 
 auto LowerInstruction(qa_ir::Jump arg, Ctx& ctx) -> ins_list {
     return {Jump{.label = arg.label.name}};

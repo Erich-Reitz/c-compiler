@@ -22,7 +22,7 @@ struct Ctx {
 #pragma GCC diagnostic pop
 };
 
-[[nodiscard]] auto translate(const st::Expression& expr, Ctx& ctx) -> Stmt;
+[[nodiscard]] auto translate(const st::Expression& expr, Ctx& ctx) -> ExprNode;
 [[nodiscard]] auto translate(const std::unique_ptr<st::ExpressionStatement>& stmt, Ctx& ctx)
     -> Stmt;
 [[nodiscard]] auto translate(const std::unique_ptr<st::SelectionStatement>& stmt, Ctx& ctx)

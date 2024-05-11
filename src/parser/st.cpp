@@ -4,12 +4,13 @@ namespace st {
 AssignmentExpression::AssignmentExpression(Expression p_lhs, Expression p_rhs)
     : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)) {}
 
-AdditiveExpression::AdditiveExpression(Expression lhs, Expression rhs, AdditiveExpressionType _type)
-    : lhs(std::move(lhs)), rhs(std::move(rhs)), type(_type) {}
+AdditiveExpression::AdditiveExpression(Expression p_lhs, Expression p_rhs,
+                                       AdditiveExpressionType p_type)
+    : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)), type(p_type) {}
 
-SelectionStatement::SelectionStatement(Expression cond, std::shared_ptr<CompoundStatement> then,
-                                       std::shared_ptr<CompoundStatement> else_)
-    : cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) {}
+SelectionStatement::SelectionStatement(Expression p_cond, std::shared_ptr<CompoundStatement> p_then,
+                                       std::shared_ptr<CompoundStatement> p_else)
+    : cond(std::move(p_cond)), then(std::move(p_then)), else_(std::move(p_else)) {}
 
 Statement::Statement(
     std::variant<std::shared_ptr<ExpressionStatement>, std::shared_ptr<ReturnStatement>,
@@ -17,13 +18,13 @@ Statement::Statement(
         p_stmt)
     : stmt(std::move(p_stmt)) {}
 
-Statement::Statement(std::shared_ptr<ExpressionStatement> stmt) : stmt(std::move(stmt)) {}
-Statement::Statement(std::shared_ptr<ReturnStatement> stmt) : stmt(std::move(stmt)) {}
-Statement::Statement(std::shared_ptr<SelectionStatement> stmt) : stmt(std::move(stmt)) {}
+Statement::Statement(std::shared_ptr<ExpressionStatement> p_stmt) : stmt(std::move(p_stmt)) {}
+Statement::Statement(std::shared_ptr<ReturnStatement> p_stmt) : stmt(std::move(p_stmt)) {}
+Statement::Statement(std::shared_ptr<SelectionStatement> p_stmt) : stmt(std::move(p_stmt)) {}
 
-BlockItem::BlockItem(std::variant<Declaration, Statement> item) : item(std::move(item)) {}
-BlockItem::BlockItem(Declaration item) : item(std::move(item)) {}
-BlockItem::BlockItem(Statement item) : item(std::move(item)) {}
+BlockItem::BlockItem(std::variant<Declaration, Statement> p_item) : item(std::move(p_item)) {}
+BlockItem::BlockItem(Declaration p_item) : item(std::move(p_item)) {}
+BlockItem::BlockItem(Statement p_item) : item(std::move(p_item)) {}
 
 UnaryExpression::UnaryExpression(UnaryExpressionType _type, Expression p_expr)
     : type(_type), expr(std::move(p_expr)) {}

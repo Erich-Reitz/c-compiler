@@ -183,6 +183,7 @@ std::ostream& operator<<(std::ostream& os, const DefineStackPushed& dsp);
 struct PointerOffset {
     Value dst;
 
+    ast::DataType basisType;
     Value base;
     Value offset;
 };

@@ -27,26 +27,18 @@ auto gen_stmt(op_list& ops, ast::JumpAstNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list& ops, ast::IfNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list& ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> void;
 auto gen_stmt(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void;
-auto gen_stmt(op_list& ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> void {
-    throw std::runtime_error("gen_stmt(op_list &ops, ast::ConstFloatNode* node, F_Ctx& ctx)");
-};
 
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::JumpAstNode* node, F_Ctx& ctx) -> Value;
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::IfNode* node, F_Ctx& ctx) -> Value;
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> Value;
+
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value;
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::ForLoopAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value;
 [[nodiscard]] auto gen_rhs(op_list& ops, ast::AddrAstNode* node, F_Ctx& ctx) -> Value;
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value;
 
-[[nodiscard]] auto gen_rhs(op_list& ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> Value {
-    return Immediate<float>{.numerical_value = node->value};
-}
+[[nodiscard]] auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value;
+[[nodiscard]] auto gen_rhs(op_list& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value;
+[[nodiscard]] auto gen_rhs(op_list& ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> Value;
 
 auto munch_stmt(op_list& ops, ast::BodyNode& node, F_Ctx& ctx) -> void;
 
@@ -55,7 +47,7 @@ auto munch_stmt(op_list& ops, ast::BodyNode& node, F_Ctx& ctx) -> void;
 auto gen_fun_prologue(const ast::FrameAstNode* function, F_Ctx& ctx) -> op_list {
     op_list instructions;
     for (const auto [idx, param] : function->params | std::views::enumerate) {
-        auto var = std::make_shared<ast::VariableAstNode>(param.name, param.type, std::nullopt);
+        auto var = std::make_shared<ast::VariableAstNode>(param.name, param.type);
         Value dst = ctx.AddVariable(var->name, var->type);
         if (static_cast<size_t>(idx) >= target::param_regs.size()) {
             const auto i = DefineStackPushed{.name = param.name, .size = param.type.GetSize()};
@@ -72,10 +64,6 @@ auto gen_fun_prologue(const ast::FrameAstNode* function, F_Ctx& ctx) -> op_list 
 }
 
 auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
-    const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
-        return gen_rhs(ops, arg.get(), ctx);
-    };
-
     if (ctx.variables.find(node->name) == ctx.variables.end()) {
         Value dst = ctx.AddVariable(node->name, node->type);
         return dst;
@@ -83,22 +71,7 @@ auto gen_rhs(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> Value {
 
     assert(node != nullptr);
     const auto var = ctx.variables.at(node->name);
-    Value* offset = nullptr;
-    if (node->offset.has_value()) {
-        offset = new Value(std::visit(rhs_visitor, node->offset.value().node));
-        const auto result = ctx.AddTemp(ast::DataType{.base_type = node->type.points_to});
-        const auto location = Variable{.name = node->name, .type = node->type, .offset = offset};
-        auto bin_op_instruction = Mov{.dst = result, .src = location};
-        ops.push_back(bin_op_instruction);
-        return result;
-    }
-
-    // if (var.type.base_type == ast::BaseType::ARRAY) {
-    //     return Variable{
-    //         .name = node->name, .type = ast::decay_array_type(var.type), .offset = nullptr};
-    // }
-
-    const auto result = Variable{.name = node->name, .type = node->type, .offset = offset};
+    const auto result = Variable{.name = node->name, .type = node->type, .offset = nullptr};
     return result;
 }
 
@@ -109,8 +82,6 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
 
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
-
-
 
     static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
         {ast::BinOpKind::Add,
@@ -139,6 +110,25 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
          }},
     };
 
+    static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>>
+        pointer_arth_map{
+            {ast::BinOpKind::Add,
+             [](Value dst, Value left, Value right) -> Operation {
+                 if (GetDataType(left).base_type == ast::BaseType::POINTER ||
+                     GetDataType(left).base_type == ast::BaseType::ARRAY) {
+                     assert(GetDataType(right).base_type != ast::BaseType::POINTER);
+                     return PointerOffset{.dst = dst,
+                                          .basisType = GetDataType(right),
+                                          .base = left,
+                                          .offset = right};
+                 } else {
+                     assert(GetDataType(left).base_type != ast::BaseType::POINTER);
+                     return PointerOffset{
+                         .dst = dst, .basisType = GetDataType(left), .base = right, .offset = left};
+                 }
+             }},
+        };
+
     auto bin_op = node->kind;
     if (bin_op_map.find(bin_op) == bin_op_map.end()) {
         throw std::runtime_error("Unsupported binary operation " + ast::bin_op_to_string(bin_op));
@@ -149,41 +139,26 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
     const auto lhs_type = GetDataType(lhs_value);
     const auto rhs_type = GetDataType(rhs_value);
 
-    if ((lhs_type.base_type == ast::BaseType::POINTER ||
-         lhs_type.base_type == ast::BaseType::ARRAY) &&
-        ast::is_arithmetic(bin_op)) {
-        // if the left hand side is a pointer,
-        auto lhs_variable = std::get<Variable>(lhs_value);
-        if (lhs_variable.offset == nullptr) {
-            lhs_variable.offset = new Value(rhs_value);
-        } else {
-            const auto new_offset = ctx.AddTemp(ast::DataType::int_type());
-            auto bin_op_instruction = bin_op_func(new_offset, *lhs_variable.offset, rhs_value);
-            ops.push_back(bin_op_instruction);
-            lhs_variable.offset = new Value(new_offset);
+    const auto resulting_type = ResultingTypeForBinOp(lhs_type, rhs_type, bin_op);
+    auto dst = ctx.AddTemp(resulting_type);
+    if (resulting_type.base_type == ast::BaseType::POINTER) {
+        if (pointer_arth_map.find(bin_op) == pointer_arth_map.end()) {
+            throw std::runtime_error("Unsupported binary operation " +
+                                     ast::bin_op_to_string(bin_op));
         }
-        return lhs_variable;
-    } else if ((rhs_type.base_type == ast::BaseType::POINTER ||
-                rhs_type.base_type == ast::BaseType::ARRAY) &&
-               ast::is_arithmetic(bin_op)) {
-        // if the left hand side is a pointer,
-        auto rhs_variable = std::get<Variable>(rhs_value);
-        if (rhs_variable.offset == nullptr) {
-            rhs_variable.offset = new Value(lhs_value);
-        } else {
-            const auto new_offset = ctx.AddTemp(ast::DataType::int_type());
-            auto bin_op_instruction = bin_op_func(new_offset, *rhs_variable.offset, lhs_value);
-            ops.push_back(bin_op_instruction);
-            rhs_variable.offset = new Value(new_offset);
-        }
-        return rhs_variable;
-    } else {
-        const auto resulting_type = ResultingTypeForBinOp(lhs_type, rhs_type, bin_op);
-        auto dst = ctx.AddTemp(resulting_type);
-        auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
-        ops.push_back(bin_op_instruction);
+
+        bin_op_func = pointer_arth_map.at(bin_op);
+        ops.push_back(bin_op_func(dst, lhs_value, rhs_value));
         return dst;
     }
+
+    auto bin_op_instruction = bin_op_func(dst, lhs_value, rhs_value);
+    ops.push_back(bin_op_instruction);
+    return dst;
+}
+
+[[nodiscard]] auto gen_rhs(op_list& ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> Value {
+    return Immediate<float>{.numerical_value = node->value};
 }
 
 auto gen_rhs(op_list& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> Value {
@@ -211,9 +186,8 @@ auto gen_rhs(op_list& ops, ast::DerefReadAstNode* node, F_Ctx& ctx) -> Value {
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-    const auto base_expr = node->base_expr.node;
 
-    auto src = std::visit(rhs_visitor, node->base_expr.node);
+    auto src = std::visit(rhs_visitor, node->expr.node);
     if (std::holds_alternative<Variable>(src)) {
         const auto variable = std::get<Variable>(src);
         assert(variable.type.base_type == ast::BaseType::POINTER ||
@@ -252,12 +226,8 @@ auto gen_rhs(op_list& ops, ast::DerefWriteAstNode* node, F_Ctx& ctx) -> Value {
     const auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-    auto value_pointing_to = std::visit(rhs_visitor, node->base_expr.node);
+    auto value_pointing_to = std::visit(rhs_visitor, node->expr.node);
     return value_pointing_to;
-}
-
-auto gen_rhs(op_list& ops, ast::ForLoopAstNode* node, F_Ctx& ctx) -> Value {
-    throw std::runtime_error("gen_rhs(op_list &ops, ast::ForLoopAstNode* node, F_Ctx& ctx)");
 }
 
 auto gen_rhs(op_list& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx) -> Value {
@@ -277,18 +247,6 @@ auto gen_rhs(op_list& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx) -> Value 
     return dst;
 }
 
-auto gen_rhs(op_list& ops, ast::JumpAstNode* node, F_Ctx& ctx) -> Value {
-    throw std::runtime_error("gen_rhs(op_list &ops, ast::JumpAstNode* node, F_Ctx& ctx)");
-}
-
-auto gen_rhs(op_list& ops, ast::IfNode* node, F_Ctx& ctx) -> Value {
-    throw std::runtime_error("gen_rhs(op_list &ops, ast::IfNode* node, F_Ctx& ctx)");
-}
-
-auto gen_rhs(op_list& ops, ast::ReturnAstNode* node, F_Ctx& ctx) -> Value {
-    throw std::runtime_error("gen_rhs(op_list &ops, ast::ReturnAstNode* node, F_Ctx& ctx)");
-}
-
 auto gen_rhs(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> Value {
     throw std::runtime_error("gen_rhs(op_list &ops, ast::MoveAstNode* node, F_Ctx& ctx)");
 }
@@ -299,6 +257,10 @@ auto gen_stmt(op_list& ops, ast::VariableAstNode* node, F_Ctx& ctx) -> void {
 
 auto gen_stmt(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> void {
     throw std::runtime_error("gen_stmt(op_list &ops, ast::BinaryOpAstNode* node, F_Ctx& ctx)");
+}
+
+auto gen_stmt(op_list& ops, ast::ConstFloatNode* node, F_Ctx& ctx) -> void {
+    throw std::runtime_error("gen_stmt(op_list &ops, ast::ConstIntAstNode* node, F_Ctx& ctx)");
 }
 
 auto gen_stmt(op_list& ops, ast::ConstIntAstNode* node, F_Ctx& ctx) -> void {
@@ -364,7 +326,6 @@ auto gen_cond(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_l
     auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
         return gen_rhs(ops, arg.get(), ctx);
     };
-
 
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
@@ -473,13 +434,6 @@ auto gen_stmt(op_list& ops, ast::MoveAstNode* node, F_Ctx& ctx) -> void {
     if (node->lhs.is_variable_ast_node()) {
         const auto lhs_var = node->lhs.get_variable_ast_node();
         qa_ir::Value dst = ctx.AddVariable(lhs_var->name, lhs_var->type);
-
-        if (lhs_var->offset.has_value()) {
-            auto offset = std::visit(rhs_visitor, lhs_var->offset.value().node);
-            auto offset_v = new Value(offset);
-            dst = Variable{.name = lhs_var->name, .type = lhs_var->type, .offset = offset_v};
-        }
-
         const auto move_instruction = Mov{.dst = dst, .src = src};
         ops.push_back(move_instruction);
     } else if (node->lhs.is_deref_write()) {

@@ -357,8 +357,8 @@ struct CompoundStatement;
 
 class SelectionStatement {
    public:
-    explicit SelectionStatement(Expression cond, std::shared_ptr<CompoundStatement> then,
-                                std::shared_ptr<CompoundStatement> else_);
+    explicit SelectionStatement(Expression p_cond, std::shared_ptr<CompoundStatement> p_then,
+                                std::shared_ptr<CompoundStatement> p_else);
 
     std::ostream& print(std::ostream& os) const {
         os << "SelectionStatement(cond=";
