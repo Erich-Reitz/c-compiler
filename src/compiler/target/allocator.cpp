@@ -3,6 +3,8 @@
 #include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
+[[nodiscard]] auto getFirstUse(const Frame& frame) -> FirstLastUse;
+[[nodiscard]] auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister>;
 
 struct AllocatorContext {
    public:
@@ -60,8 +62,8 @@ struct AllocatorContext {
 
 auto getVirtualRegisterIDs(const Instruction& instruction)
     -> std::tuple<std::optional<int>, std::optional<int>> {
-    const auto srcId = get_src_virtual_id_if_present(instruction);
-    const auto dstId = get_dest_virtual_id_if_present(instruction);
+    const auto srcId = std::visit([](auto&& arg1) { return src_register_id(arg1); }, instruction);
+    const auto dstId = std::visit([](auto&& arg1) { return dest_register_id(arg1); }, instruction);
     return {srcId, dstId};
 }
 
@@ -87,14 +89,16 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
     std::map<VirtualRegister, int> newFirstUsed = {};
     for (auto [idx, instruction] : frame.instructions | std::views::enumerate) {
         std::optional<VirtualRegister> src;
-        auto register_src = get_src_register(instruction);
+        auto register_src =
+            std::visit([](auto&& arg1) { return get_src_register(arg1); }, instruction);
         if (register_src.has_value()) {
             src = *register_src;
             if (newFirstUsed.find(*src) == newFirstUsed.end()) {
                 newFirstUsed[*src] = idx;
             }
         }
-        const auto register_dest = get_dest_register(instruction);
+        const auto register_dest =
+            std::visit([](auto&& arg1) { return get_dest_register(arg1); }, instruction);
         if (register_dest.has_value()) {
             const auto dest = *register_dest;
             if (!std::holds_alternative<Mov>(instruction)) {
@@ -148,15 +152,15 @@ auto remap(Frame& frame) -> std::map<VirtualRegister, VirtualRegister> {
 
             return HardcodedRegister{ctx.mapping[virtual_reg], virtual_reg.size};
         };
-        auto src_op = get_src_register(operation);
+        auto src_op = std::visit([](auto&& arg1) { return get_src_register(arg1); }, operation);
         if (src_op.has_value()) {
-            auto src_reg = process_register(src_op.value());
-            set_src_register(operation, src_reg);
+            HardcodedRegister src_reg = process_register(src_op.value());
+            std::visit([&src_reg](auto&& arg1) { set_src_register(arg1, src_reg); }, operation);
         }
-        auto dest_op = get_dest_register(operation);
+        auto dest_op = std::visit([](auto&& arg1) { return get_dest_register(arg1); }, operation);
         if (dest_op.has_value()) {
-            auto dest_reg = process_register(dest_op.value());
-            set_dest_register(operation, dest_reg);
+            HardcodedRegister dest_reg = process_register(dest_op.value());
+            std::visit([&dest_reg](auto&& arg1) { set_dest_register(arg1, dest_reg); }, operation);
         }
         newInstructions.push_back(operation);
     }
