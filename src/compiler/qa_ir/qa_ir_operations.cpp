@@ -32,7 +32,8 @@ std::ostream& operator<<(std::ostream& os, const Add<T, U>& add) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Sub& sub) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Sub<T, U>& sub) {
     os << "sub dst=" << sub.dst << ", left=" << sub.left << ", right=" << sub.right;
     return os;
 }

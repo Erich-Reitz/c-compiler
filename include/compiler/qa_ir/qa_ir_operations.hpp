@@ -45,13 +45,15 @@ struct Add {
 template <ast::BaseType T, ast::BaseType U>
 std::ostream& operator<<(std::ostream& os, const Add<T, U>& add);
 
+template <ast::BaseType T, ast::BaseType U>
 struct Sub {
     Value dst;
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const Sub& sub);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Sub<T, U>& sub);
 
 struct MovR {
     Value dst;
@@ -197,8 +199,10 @@ std::ostream& operator<<(std::ostream& os, const PointerOffset& pointer_offset);
 
 using Operation =
     std::variant<Mov, Ret, Add<ast::BaseType::INT, ast::BaseType::INT>,
-                 Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, Sub, MovR, Addr,
-                 DefineStackPushed, Deref, Compare<ast::BaseType::INT, ast::BaseType::INT>, Jump,
+                 Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>,
+                 Sub<ast::BaseType::INT, ast::BaseType::INT>, MovR, Addr,
+                 Sub<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, DefineStackPushed, Deref,
+                 Compare<ast::BaseType::INT, ast::BaseType::INT>, Jump,
                  Equal<ast::BaseType::INT, ast::BaseType::INT>,
                  Equal<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, ConditionalJumpEqual,
                  ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef, Call, DerefStore,

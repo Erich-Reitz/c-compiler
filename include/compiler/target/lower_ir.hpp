@@ -39,7 +39,8 @@ struct Ctx {
 
 template <ast::BaseType T, ast::BaseType U>
 [[nodiscard]] auto LowerInstruction(qa_ir::Add<T, U> add, Ctx& ctx) -> ins_list;
-[[nodiscard]] auto LowerInstruction(qa_ir::Sub sub, Ctx& ctx) -> ins_list;
+template <ast::BaseType T, ast::BaseType U>
+[[nodiscard]] auto LowerInstruction(qa_ir::Sub<T, U> sub, Ctx& ctx) -> ins_list;
 [[nodiscard]] auto LowerInstruction(qa_ir::Call call, Ctx& ctx) -> ins_list;
 [[nodiscard]] auto LowerInstruction(qa_ir::Ret ret, Ctx& ctx) -> ins_list;
 [[nodiscard]] auto LowerInstruction(qa_ir::ConditionalJumpEqual cj, Ctx& ctx) -> ins_list;

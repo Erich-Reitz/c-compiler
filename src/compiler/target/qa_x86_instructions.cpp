@@ -40,6 +40,11 @@ auto ZeroExtend::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto LoadI::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "mov " + register_to_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
+}
+
 auto StoreI::to_asm(CodegenContext& ctx) const -> void {
     const auto source_prefix = std::string("dword");
 
@@ -126,8 +131,14 @@ auto Add::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto Sub::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins = "sub " + register_to_asm(dst) + ", " + register_to_asm(src);
-    ctx.AddInstruction(ins);
+    const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dst.reg)) {
+        const auto ins = "subss " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "sub " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    }
 }
 
 auto CmpI::to_asm(CodegenContext& ctx) const -> void {

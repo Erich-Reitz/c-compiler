@@ -87,6 +87,16 @@ struct StoreI : public x86Instruction {
     }
 };
 
+struct LoadI : public x86Instruction {
+    Register dst;
+    int value;
+    LoadI(Register p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "LoadI<" + register_to_asm(dst) + ", " + std::to_string(value) + ">";
+    }
+};
+
 struct StoreF : public x86Instruction {
     StackLocation dst;
     Register src;
@@ -440,6 +450,6 @@ using Instruction =
                  CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
                  ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
-                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA>;
+                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI>;
 
 }  // namespace target
