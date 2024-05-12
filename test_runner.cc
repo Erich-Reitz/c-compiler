@@ -206,6 +206,23 @@ RUN_TEST_CASE(FloatLessThanPositiveCase, "float_less_than_positive.c");
 RUN_TEST_CASE(FloatGreaterThanNegativeCase, "float_greater_negative.c");
 RUN_TEST_CASE(FloatGreaterThanPositiveCase, "float_greater_positive.c");
 
+// testing constant < var
+RUN_TEST_CASE(FloatLtValVarNeg, "float_lt_val_var_neg.c");
+RUN_TEST_CASE(FloatLtValVarPos, "float_lt_val_var_pos.c");
+
+// testing constant > var
+RUN_TEST_CASE(FloatGtValVarNeg, "float_gt_val_var_neg.c");
+RUN_TEST_CASE(FloatGtValVarPos, "float_gt_val_var_pos.c");
+
+// testing var < constant
+RUN_TEST_CASE(FloatLtVarValNeg, "float_lt_var_val_neg.c");
+RUN_TEST_CASE(FloatLtVarValPos, "float_lt_var_val_pos.c");
+
+// testing var > constant
+RUN_TEST_CASE(FloatGtVarValNeg, "float_gt_var_val_neg.c");
+RUN_TEST_CASE(FloatGtVarValPos, "float_gt_var_val_pos.c");
+
+// array of floats
 RUN_TEST_CASE(FloatArr, "float_arr.c");
 
 int main(int argc, char** argv) {
