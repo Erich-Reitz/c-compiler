@@ -219,6 +219,16 @@ using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, Conditi
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
 
 template <typename O>
+concept IsArthOverIntegers =
+    std::is_same<O, qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::Sub<ast::BaseType::INT, ast::BaseType::INT>>::value;
+
+template <typename O>
+concept IsArthOverFloats =
+    std::is_same<O, qa_ir::Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
+    std::is_same<O, qa_ir::Sub<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value;
+
+template <typename O>
 concept IsValueProducingCompareOverIntegers =
     std::is_same<O, qa_ir::GreaterThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
     std::is_same<O, qa_ir::LessThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||

@@ -293,6 +293,16 @@ auto cmp_op(qa_ir::NotEqual<bt::FLOAT, bt::FLOAT> op, bool negate)
     throw std::runtime_error("not equal float");
 }
 
+template <ast::BaseType T>
+auto arth_reg_reg_op(qa_ir::Add<T, T> op) -> std::function<Instruction(Register, Register)> {
+    return [](Register reg1, Register reg2) -> Instruction { return Add(reg1, reg2); };
+}
+
+template <ast::BaseType T>
+auto arth_reg_reg_op(qa_ir::Sub<T, T> op) -> std::function<Instruction(Register, Register)> {
+    return [](Register reg1, Register reg2) -> Instruction { return Add(reg1, reg2); };
+}
+
 ins_list MoveBranchResultToDestination(qa_ir::IsCompareOverIntegers auto kind, target::Location dst,
                                        bool negate_compare, Ctx& ctx) {
     std::vector<Instruction> result;
@@ -387,14 +397,15 @@ auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto rhs_reg = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(rhs_reg, value.numerical_value));
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
@@ -405,18 +416,6 @@ auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location d
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     result.push_back(SubI(lhs_reg, value.numerical_value));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = ctx.NewFloatRegister(4);
-    result.push_back(ImmediateLoad<float>(rhs_reg, value.numerical_value));
-    result.push_back(Sub(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
@@ -573,15 +572,16 @@ auto OperationInstructions(qa_ir::IsValueProducingCompareOverIntegers auto kind,
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
-    const auto rhs_reg = ensureRegister(rhs_temp, ctx);
+    const Register rhs_reg = ensureRegister(rhs_temp, ctx);
     const auto lhs_reg = ctx.NewIntegerRegister(4);
     result.push_back(Load(lhs_reg, lhs_stack_location));
-    result.push_back(Add(lhs_reg, rhs_reg));
+    auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
@@ -599,7 +599,7 @@ auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -607,20 +607,8 @@ auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Locati
     const auto rhs_reg = ensureRegister(rhs_temp, ctx);
     const auto lhs_reg = ctx.NewFloatRegister(4);
     result.push_back(Load(lhs_reg, lhs_stack_location));
-    result.push_back(Add(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
-    const auto rhs_reg = ensureRegister(rhs_temp, ctx);
-    const auto lhs_reg = ctx.NewFloatRegister(4);
-    result.push_back(Load(lhs_reg, lhs_stack_location));
-    result.push_back(Sub(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
@@ -637,20 +625,6 @@ auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
-    const auto lhs_reg = ctx.NewIntegerRegister(4);
-    result.push_back(Load(lhs_reg, lhs_stack_location));
-    const auto rhs_reg = ctx.NewFloatRegister(4);
-    result.push_back(ImmediateLoad<float>(rhs_reg, rhs_value.numerical_value));
-    result.push_back(Add(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
 auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
@@ -663,7 +637,7 @@ auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -672,19 +646,21 @@ auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Locati
     result.push_back(Load(lhs_reg, lhs_stack_location));
     const auto rhs_reg = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(rhs_reg, rhs_value.numerical_value));
-    result.push_back(Sub(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_value1 = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg_value1, ctx.get_stack_location(value1, result)));
     const auto intermediate_reg_value2 = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg_value2, ctx.get_stack_location(value2, result)));
-    result.push_back(Add(intermediate_reg_value1, intermediate_reg_value2));
+    auto op = arth_reg_reg_op(kind);
+    result.push_back(op(intermediate_reg_value1, intermediate_reg_value2));
     result.push_back(Register_To_Location(dst, intermediate_reg_value1, ctx));
     return result;
 }
@@ -713,154 +689,76 @@ auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto rhs_reg = ensureRegister(rhs_value, ctx);
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = ensureRegister(rhs_value, ctx);
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
     -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
     result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
     -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
     result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
-    result.push_back(Sub(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
-    -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
-    result.push_back(Add(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
-    -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsImmediate auto lhs_value, qa_ir::Variable rhs_value, Ctx& ctx)
     -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ctx.NewFloatRegister(4);
-    result.push_back(ImmediateLoad<float>(lhs_reg, lhs_value.numerical_value));
-    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
+    throw std::runtime_error("arth float, imm, var");
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsImmediate auto lhs_value, qa_ir::Variable value2, Ctx& ctx)
-    -> ins_list {
-    throw std::runtime_error("add<float, float>, immediate, var , var");
-}
-
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto rhs_reg = ensureRegister(rhs_value, ctx);
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = ensureRegister(rhs_value, ctx);
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = newRegisterForVariable(value1, ctx);
     result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));
     const auto rhs_reg = newRegisterForVariable(value2, ctx);
     result.push_back(Load(rhs_reg, ctx.get_stack_location(value2, result)));
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = newRegisterForVariable(value1, ctx);
-    result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));
-    const auto rhs_reg = newRegisterForVariable(value2, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(value2, result)));
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
-                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = newRegisterForVariable(value1, ctx);
-    result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));
-    const auto rhs_reg = newRegisterForVariable(value2, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(value2, result)));
-    result.push_back(Sub(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::IsImmediate auto lhs_value, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -868,12 +766,13 @@ auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location d
     result.push_back(ImmediateLoad<int>(lhs_reg, lhs_value.numerical_value));
     const auto rhs_reg = ctx.NewIntegerRegister(4);
     result.push_back(ImmediateLoad<int>(rhs_reg, rhs_value.numerical_value));
-    result.push_back(Add(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsImmediate auto lhs_value, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -881,20 +780,8 @@ auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Locati
     result.push_back(ImmediateLoad<float>(lhs_reg, lhs_value.numerical_value));
     const auto rhs_reg = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(rhs_reg, rhs_value.numerical_value));
-    result.push_back(Add(lhs_reg, rhs_reg));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
-auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsImmediate auto lhs_value, qa_ir::IsImmediate auto rhs_value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_reg = ctx.NewIntegerRegister(4);
-    result.push_back(ImmediateLoad<int>(lhs_reg, lhs_value.numerical_value));
-    const auto rhs_reg = ctx.NewIntegerRegister(4);
-    result.push_back(ImmediateLoad<int>(rhs_reg, rhs_value.numerical_value));
-    result.push_back(Sub(lhs_reg, rhs_reg));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }

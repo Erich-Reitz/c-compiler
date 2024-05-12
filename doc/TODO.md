@@ -3,11 +3,9 @@
 ### Now
 
 - Float equality / not equal operations
-- More float tests
+
 
 ### Later
-- [ ] Compile time -- real	0m33.827s
-    - but this is linking with google test too.
 - [ ] Handle variables outside of functions
 - [ ] Implement multiplication
 - [ ] Implement division
