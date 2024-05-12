@@ -48,8 +48,9 @@ struct Temp {
 std::ostream& operator<<(std::ostream& os, const Value& v);
 
 template <typename T>
-concept IsRegister = std::is_same<T, target::HardcodedRegister>::value ||
-                     std::is_same<T, target::VirtualRegister>::value;
+concept IsRegister =
+    std::is_same<T, target::HardcodedRegister>::value ||
+    std::is_same<T, target::VirtualRegister>::value || std::is_same<T, target::Register>::value;
 
 template <typename T>
 concept IsEphemeral = IsRegister<T> || std::is_same<T, Temp>::value;
@@ -60,6 +61,8 @@ concept IsIRLocation = std::is_same<T, qa_ir::Variable>::value;
 template <typename T>
 concept IsImmediate =
     std::is_same<T, Immediate<int>>::value || std::is_same<T, Immediate<float>>::value;
+
+
 
 bool operator<(const Temp& lhs, const Temp& rhs);
 std::ostream& operator<<(std::ostream& os, const Temp& temp);

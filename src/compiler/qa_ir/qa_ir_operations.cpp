@@ -52,12 +52,8 @@ std::ostream& operator<<(std::ostream& os, const Deref& deref) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const StoreAddr& storeaddr) {
-    os << "storeaddr dst=" << storeaddr.dst << ", src=" << storeaddr.src;
-    return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Compare& cmp) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Compare<T, U>& cmp) {
     os << "cmp left=" << cmp.left << ", right=" << cmp.right;
     return os;
 }
@@ -71,12 +67,14 @@ std::ostream& operator<<(std::ostream& os, const NotEqual& neq) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const GreaterThan& gt) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const GreaterThan<T, U>& gt) {
     os << "gt dst=" << gt.dst << ", left=" << gt.left << ", right=" << gt.right;
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const LessThan& lt) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const LessThan<T, U>& lt) {
     os << "lt dst=" << lt.dst << ", left=" << lt.left << ", right=" << lt.right;
     return os;
 }

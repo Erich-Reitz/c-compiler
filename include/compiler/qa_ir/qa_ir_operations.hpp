@@ -75,19 +75,14 @@ struct Deref {
 
 std::ostream& operator<<(std::ostream& os, const Deref& deref);
 
-struct StoreAddr {
-    Value dst;
-    Value src;
-};
-
-std::ostream& operator<<(std::ostream& os, const StoreAddr& storeaddr);
-
+template <ast::BaseType T, ast::BaseType U>
 struct Compare {
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const Compare& cmp);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Compare<T, U>& cmp);
 
 struct Equal {
     Value dst;
@@ -105,21 +100,25 @@ struct NotEqual {
 
 std::ostream& operator<<(std::ostream& os, const NotEqual& neq);
 
+template <ast::BaseType T, ast::BaseType U>
 struct GreaterThan {
     Value dst;
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const GreaterThan& gt);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const GreaterThan<T, U>& gt);
 
+template <ast::BaseType T, ast::BaseType U>
 struct LessThan {
     Value dst;
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const LessThan& lt);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const LessThan<T, U>& lt);
 
 struct ConditionalJumpEqual {
     Label trueLabel;
@@ -195,12 +194,22 @@ std::ostream& operator<<(std::ostream& os, const PointerOffset& pointer_offset);
 using Operation =
     std::variant<Mov, Ret, Add<ast::BaseType::INT, ast::BaseType::INT>,
                  Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, Sub, MovR, Addr,
-                 DefineStackPushed, Deref, Compare, Jump, Equal, ConditionalJumpEqual,
-                 ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef, Call, DerefStore,
-                 GreaterThan, ConditionalJumpLess, NotEqual, LessThan, PointerOffset, DefineArray>;
+                 DefineStackPushed, Deref, Compare<ast::BaseType::INT, ast::BaseType::INT>, Jump,
+                 Equal, ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
+                 LabelDef, Call, DerefStore, GreaterThan<ast::BaseType::INT, ast::BaseType::INT>,
+                 GreaterThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, ConditionalJumpLess,
+                 NotEqual, LessThan<ast::BaseType::INT, ast::BaseType::INT>,
+                 LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, PointerOffset, DefineArray>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
                            ConditionalJumpLess>;
 
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
+
+template <typename T>
+concept IsValueProducingCompare = std::is_same<T, GreaterThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+                                  std::is_same<T, LessThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+                                  std::is_same<T, Compare<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+                                  std::is_same<T, Equal>::value ||
+                                  std::is_same<T, NotEqual>::value;
 }  // namespace qa_ir

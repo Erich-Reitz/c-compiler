@@ -11,12 +11,11 @@
 #include "../../../include/compiler/target/qa_x86.hpp"
 
 namespace target {
+using bt = ast::BaseType;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 bool l_value_ctx = false;
-
-using ins_list = std::vector<Instruction>;
 
 template <typename ImmediateType>
 [[nodiscard]] ins_list _Value_To_Location(Register r_dst, qa_ir::Immediate<ImmediateType> v_src,
@@ -52,7 +51,7 @@ template <typename ImmediateType>
 [[nodiscard]] ins_list _Value_To_Location(Register r_dst, qa_ir::Variable v_src, Ctx* ctx) {
     ins_list result;
     const auto base = ctx->get_stack_location(v_src, result);
-    if (v_src.type.base_type == ast::BaseType::ARRAY) {
+    if (v_src.type.base_type == bt::ARRAY) {
         const auto lea = Lea(r_dst, base);
         result.push_back(lea);
         return result;
@@ -232,43 +231,66 @@ ins_list Ctx::LocationToLocation(Location l, qa_ir::Value v) {
     return result;
 }
 
+/** -------------------------------------------------------------- */
+
 Register ensureRegister(qa_ir::Temp operand, Ctx& ctx) { return ctx.AllocateNewForTemp(operand); }
 
 Register ensureRegister(target::Register operand, Ctx& ctx) { return operand; }
 
-template <typename ImmediateTypeOne, typename ImmediateTypeTwo>
-ins_list InstructionForArth(ast::BinOpKind kind, std::optional<target::Location> dst,
-                            qa_ir::Immediate<ImmediateTypeOne> result_reg,
-                            qa_ir::Immediate<ImmediateTypeTwo> value, Ctx& ctx) {
-    throw std::runtime_error("operations between types not defined");
-}
-
-template <ast::BaseType T, ast::BaseType U>
-auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, Register result_reg,
-                           qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
+                           Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
-    result.push_back(AddI(result_reg, value.numerical_value));
-    result.push_back(Register_To_Location(dst, result_reg, ctx));
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    result.push_back(AddI(lhs_reg, value.numerical_value));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub kind, target::Location dst, Register result_reg,
-                           qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
+                           Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
-    result.push_back(SubI(result_reg, value.numerical_value));
-    result.push_back(Register_To_Location(dst, result_reg, ctx));
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    const auto rhs_reg = ctx.NewFloatRegister(4);
+    result.push_back(ImmediateLoad<float>(rhs_reg, value.numerical_value));
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::Sub kind, target::Location dst, Register result_reg,
+
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::IsEphemeral auto lhs_temp,
+                           qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    result.push_back(SubI(lhs_reg, value.numerical_value));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, Register lhs_reg,
                            qa_ir::Immediate<float> value, Ctx& ctx) -> ins_list {
     throw std::runtime_error("sub, location, register, immediate float");
 }
 
-template <ast::BaseType T, ast::BaseType U>
-auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, Register result_reg,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, Register lhs_reg,
                            qa_ir::Immediate<float> value, Ctx& ctx) -> ins_list {
     throw std::runtime_error("add, location, register, immediate float");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, qa_ir::Variable lhs_var,
+                           qa_ir::IsEphemeral auto rhs_temp, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
+    const auto lhs_reg = newRegisterForVariable(lhs_var, ctx);
+    result.push_back(Load(lhs_reg, lhs_stack_location));
+    const auto rhs_reg = ensureRegister(rhs_temp, ctx);
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
 }
 
 auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst, Register result_reg,
@@ -291,20 +313,24 @@ auto OperationInstructions(qa_ir::Equal kind, target::Location dst, Register res
     throw std::runtime_error("eq, location, register, immediate int");
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, Register result_reg,
-                           qa_ir::Immediate<float> value, Ctx& ctx) -> ins_list {
+// nothing? prevents rhs_value from being a int, but we already decided that this is an float
+// compare
+auto OperationInstructions(qa_ir::LessThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
+                           Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     const auto intermediate_reg_for_value = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(intermediate_reg_for_value, value.numerical_value));
-    result.push_back(CmpF(result_reg, intermediate_reg_for_value));
+    result.push_back(CmpF(lhs_reg, intermediate_reg_for_value));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
     result.push_back(SetA(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, Register result_reg,
-                           qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::LessThan<bt::INT, bt::INT> kind, target::Location dst,
+                           Register result_reg, qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_for_value = ctx.NewIntegerRegister(4);
     result.push_back(ImmediateLoad<int>(intermediate_reg_for_value, value.numerical_value));
@@ -315,43 +341,130 @@ auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, Register 
     return result;
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, qa_ir::Variable lhs,
-                           qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::Variable lhs_var,
+                           qa_ir::IsEphemeral auto rhs_reg, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("lt, location, lhs_var, rhs_reg");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst, qa_ir::Temp lhs_var,
+                           qa_ir::IsImmediate auto rhs_reg, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("gt, location, lhs_var, rhs_reg");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
+                           qa_ir::Variable lhs_var, qa_ir::IsEphemeral auto rhs_reg, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("gt, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::LessThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable lhs_var, qa_ir::IsEphemeral auto rhs_reg, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("lt, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::LessThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable lhs_var, qa_ir::IsEphemeral auto rhs_reg, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("lt, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::Equal kind, target::Location dst, qa_ir::Variable lhs_var,
+                           qa_ir::IsEphemeral auto rhs_temp, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
-    const auto intermediate_reg_for_rhs_value = ctx.NewFloatRegister(4);
-    result.push_back(ImmediateLoad<float>(intermediate_reg_for_rhs_value, rhs.numerical_value));
-    const auto intermediate_reg_for_lhs_value = ctx.NewFloatRegister(4);
-    result.push_back(Load(intermediate_reg_for_lhs_value, ctx.get_stack_location(lhs, result)));
-    result.push_back(CmpF(intermediate_reg_for_lhs_value, intermediate_reg_for_rhs_value));
+    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
+    const auto lhs_reg = newRegisterForVariable(lhs_var, ctx);
+    result.push_back(Load(lhs_reg, lhs_stack_location));
+    const auto rhs_reg = ensureRegister(rhs_temp, ctx);
+    result.push_back(Cmp(lhs_reg, rhs_reg));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
-    result.push_back(SetA(integer_reg_for_result));
+    result.push_back(SetEAl(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, qa_ir::Variable lhs,
-                           qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("ne, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::Equal kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("ne, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::Equal kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("ne, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("ne, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst, qa_ir::Variable lhs_var,
+                           qa_ir::IsEphemeral auto rhs_reg, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("ne, location, lhs_var, rhs_reg");
+}
+
+auto OperationInstructions(qa_ir::GreaterThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_stack_location = ctx.get_stack_location(lhs, result);
+    result.push_back(CmpMI(lhs_stack_location, rhs.numerical_value));
+    const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
+    result.push_back(SetGAl(integer_reg_for_result));
+    result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::GreaterThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx) -> ins_list {
     throw std::runtime_error(
-        "OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, qa_ir::Variable lhs, "
-        "qa_ir::Immediate<float> rhs, Ctx& ctx)");
+        "OperationInstructions(qa_ir::GreaterThan<bt::FLOAT, bt::FLOAT> kind, target::Location "
+        "dst, "
+        "qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx)");
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, qa_ir::Variable lhs,
-                           qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::LessThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable lhs, qa_ir::Variable rhs, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_for_rhs_value = ctx.NewFloatRegister(4);
-    result.push_back(ImmediateLoad<float>(intermediate_reg_for_rhs_value, rhs.numerical_value));
-    const auto intermediate_reg_for_lhs_value = ctx.NewFloatRegister(4);
-    result.push_back(Load(intermediate_reg_for_lhs_value, ctx.get_stack_location(lhs, result)));
-    result.push_back(CmpF(intermediate_reg_for_lhs_value, intermediate_reg_for_rhs_value));
+    result.push_back(Load(intermediate_reg_for_rhs_value, ctx.get_stack_location(rhs, result)));
+    const auto lhs_stack_location = ctx.get_stack_location(lhs, result);
+    result.push_back(CmpM<bt::FLOAT>(intermediate_reg_for_rhs_value, lhs_stack_location));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
     result.push_back(SetA(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
     return result;
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, qa_ir::Variable lhs,
-                           qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
+// nothing? prevents rhs_value from being a int, but we already decided that this is an float
+// compare
+auto OperationInstructions(qa_ir::LessThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto intermediate_reg_for_rhs_value = ctx.NewFloatRegister(4);
+    result.push_back(ImmediateLoad<float>(intermediate_reg_for_rhs_value, rhs.numerical_value));
+    const auto lhs_stack_location = ctx.get_stack_location(lhs, result);
+    result.push_back(CmpM<bt::FLOAT>(intermediate_reg_for_rhs_value, lhs_stack_location));
+    const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
+    result.push_back(SetA(integer_reg_for_result));
+    result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
+    return result;
+}
+
+// nothing? prevents rhs_value from being a float, but we already decided that this is an int
+// compare
+auto OperationInstructions(qa_ir::LessThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_for_rhs_value = ctx.NewIntegerRegister(4);
     result.push_back(ImmediateLoad<int>(intermediate_reg_for_rhs_value, rhs.numerical_value));
@@ -364,6 +477,20 @@ auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, qa_ir::Va
     return result;
 }
 
+// nothing? prevents rhs_value from being a float, but we already decided that this is an int
+// compare
+auto OperationInstructions(qa_ir::LessThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx)
+    -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs, ctx);
+    result.push_back(CmpI(lhs_reg, rhs.numerical_value));
+    const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
+    result.push_back(SetLAl(integer_reg_for_result));
+    result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
+    return result;
+}
+
 auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
     throw std::runtime_error(
@@ -387,9 +514,35 @@ auto OperationInstructions(qa_ir::Equal kind, target::Location dst, qa_ir::Varia
 
 auto OperationInstructions(qa_ir::Equal kind, target::Location dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
-    throw std::runtime_error(
-        "OperationInstructions(qa_ir::Equal kind, target::Location dst, qa_ir::Variable lhs, "
-        "qa_ir::Immediate<float> rhs, Ctx& ctx)");
+    std::vector<Instruction> result;
+    const auto intermediate_reg_for_rhs_value = ctx.NewIntegerRegister(4);
+    result.push_back(ImmediateLoad<int>(intermediate_reg_for_rhs_value, rhs.numerical_value));
+    result.push_back(
+        CmpM<bt::INT>(intermediate_reg_for_rhs_value, ctx.get_stack_location(lhs, result)));
+    const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
+    result.push_back(SetEAl(integer_reg_for_result));
+    result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::IsEphemeral auto lhs,
+                           qa_ir::IsIRLocation auto rhs, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("sub, location, lhs, rhs");
+}
+
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::IsEphemeral auto lhs,
+                           qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+
+    const auto intermediate_reg_for_lhs_value = ensureRegister(lhs, ctx);
+    const auto intermediate_reg_for_value = ctx.NewFloatRegister(4);
+
+    result.push_back(ImmediateLoad<float>(intermediate_reg_for_value, rhs.numerical_value));
+
+    result.push_back(Sub(intermediate_reg_for_lhs_value, intermediate_reg_for_value));
+
+    result.push_back(Register_To_Location(dst, intermediate_reg_for_lhs_value, ctx));
+    return result;
 }
 
 auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::Variable lhs,
@@ -409,20 +562,20 @@ auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::Variabl
                            qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_stack_location = ctx.get_stack_location(lhs, result);
-    const auto intermediate_reg_for_lhs_value = ctx.NewFloatRegister(4);
+    const auto intermediate_reg_for_lhs_value = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg_for_lhs_value, lhs_stack_location));
     result.push_back(SubI(intermediate_reg_for_lhs_value, rhs.numerical_value));
     result.push_back(Register_To_Location(dst, intermediate_reg_for_lhs_value, ctx));
     return result;
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, StackLocation dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
     throw std::runtime_error("add, stack location, variable, immediate float");
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, Register dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -432,7 +585,7 @@ auto OperationInstructions(qa_ir::Add<T, U> kind, Register dst, qa_ir::Variable 
     return result;
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<float> rhs, Ctx& ctx) -> ins_list {
     return std::visit(
@@ -440,13 +593,13 @@ auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, qa_ir::V
         dst);
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, StackLocation dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
     throw std::runtime_error("dst, lhs, rhs, ctx");
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, Register dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -457,7 +610,7 @@ auto OperationInstructions(qa_ir::Add<T, U> kind, Register dst, qa_ir::Variable 
     return result;
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, qa_ir::Variable lhs,
                            qa_ir::Immediate<int> rhs, Ctx& ctx) -> ins_list {
     return std::visit(
@@ -465,25 +618,37 @@ auto OperationInstructions(qa_ir::Add<T, U> kind, target::Location dst, qa_ir::V
         dst);
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, qa_ir::Variable value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::GreaterThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
     const auto intermediate_reg_for_value1 = newRegisterForVariable(value1, ctx);
-    const auto intermediate_reg_for_value2 = newRegisterForVariable(value2, ctx);
     std::vector<Instruction> result;
     result.push_back(Load(intermediate_reg_for_value1, ctx.get_stack_location(value1, result)));
-    result.push_back(Load(intermediate_reg_for_value2, ctx.get_stack_location(value2, result)));
-    result.push_back(Cmp(intermediate_reg_for_value1, intermediate_reg_for_value2));
+    const auto rhs_stack_location = ctx.get_stack_location(value2, result);
+    result.push_back(CmpM<bt::INT>(intermediate_reg_for_value1, rhs_stack_location));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
     result.push_back(SetGAl(integer_reg_for_result));
     return result;
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, qa_ir::Variable value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::GreaterThan<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
     const auto intermediate_reg_for_value1 = newRegisterForVariable(value1, ctx);
     std::vector<Instruction> result;
     result.push_back(Load(intermediate_reg_for_value1, ctx.get_stack_location(value1, result)));
-    result.push_back(CmpM(intermediate_reg_for_value1, ctx.get_stack_location(value2, result)));
+    const auto rhs_stack_location = ctx.get_stack_location(value2, result);
+    result.push_back(CmpM<bt::FLOAT>(intermediate_reg_for_value1, rhs_stack_location));
+    const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
+    result.push_back(SetA(integer_reg_for_result));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::LessThan<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+    const auto intermediate_reg_for_value1 = newRegisterForVariable(value1, ctx);
+    std::vector<Instruction> result;
+    result.push_back(Load(intermediate_reg_for_value1, ctx.get_stack_location(value1, result)));
+    result.push_back(
+        CmpM<bt::INT>(intermediate_reg_for_value1, ctx.get_stack_location(value2, result)));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
     result.push_back(SetLAl(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
@@ -495,7 +660,8 @@ auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst, qa_ir::Va
     const auto intermediate_reg_for_value1 = newRegisterForVariable(value1, ctx);
     std::vector<Instruction> result;
     result.push_back(Load(intermediate_reg_for_value1, ctx.get_stack_location(value1, result)));
-    result.push_back(CmpM(intermediate_reg_for_value1, ctx.get_stack_location(value2, result)));
+    result.push_back(
+        CmpM<bt::INT>(intermediate_reg_for_value1, ctx.get_stack_location(value2, result)));
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
     result.push_back(SetNeAl(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
@@ -513,9 +679,8 @@ auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::Variabl
 }
 
 // std::visit on result to get specialization for result = result + 1
-auto OperationInstructions(qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT> kind,
-                           target::Location dst, qa_ir::Variable value1, qa_ir::Variable value2,
-                           Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_value1 = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg_value1, ctx.get_stack_location(value1, result)));
@@ -526,9 +691,9 @@ auto OperationInstructions(qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT> ki
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT> kind,
-                           target::Location dst, qa_ir::Immediate<int> value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsImmediate auto value1, qa_ir::Variable value2, Ctx& ctx)
+    -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg, ctx.get_stack_location(value2, result)));
@@ -537,28 +702,111 @@ auto OperationInstructions(qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT> ki
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT> kind,
-                           target::Location dst, qa_ir::Immediate<float> value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    throw std::runtime_error("add<float, float>, immediate, var , var");
-}
-
-auto OperationInstructions(qa_ir::Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT> kind,
-                           target::Location dst, qa_ir::Immediate<float> value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    throw std::runtime_error("add<float, float>, immediate, var , var");
-}
-
-auto OperationInstructions(qa_ir::Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT> kind,
-                           target::Location dst, qa_ir::Immediate<int> value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    throw std::runtime_error("add<float, float>, immediate, var , var");
-}
-
-auto OperationInstructions(qa_ir::Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT> kind,
-                           target::Location dst, qa_ir::Variable value1, qa_ir::Variable value2,
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
                            Ctx& ctx) -> ins_list {
-    throw std::runtime_error("add<float, float>, location, var , var");
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    const auto rhs_reg = ensureRegister(rhs_value, ctx);
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
+    -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
+    -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::LessThan<T, U> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::LessThan<T, U> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::Equal kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::IsEphemeral auto lhs_temp,
+                           qa_ir::IsEphemeral auto rhs_value, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Immediate<float> value1, qa_ir::Variable value2, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Immediate<int> value1, qa_ir::Variable value2, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("add<float, float>, immediate, var , var");
+}
+
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    const auto rhs_reg = ensureRegister(rhs_value, ctx);
+    result.push_back(Add(lhs_reg, rhs_reg));
+    return result;
+}
+
+auto OperationInstructions(qa_ir::Add<bt::FLOAT, bt::FLOAT> kind, target::Location dst,
+                           qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_reg = newRegisterForVariable(value1, ctx);
+    result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));
+    const auto rhs_reg = newRegisterForVariable(value2, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(value2, result)));
+    result.push_back(Add(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
 }
 
 auto OperationInstructions(qa_ir::Sub kind, target::Location dst, qa_ir::Immediate<int> value1,
@@ -592,42 +840,50 @@ auto OperationInstructions(qa_ir::NotEqual kind, target::Location dst,
     throw std::runtime_error("gt, location, immediate float, immediate float");
 }
 
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst, qa_ir::Immediate<int> value1,
-                           qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    throw std::runtime_error("gt, location, immediate float, immediate float");
-}
-
-auto OperationInstructions(qa_ir::LessThan kind, target::Location dst,
-                           qa_ir::Immediate<float> value1, qa_ir::Variable value2, Ctx& ctx)
-    -> ins_list {
-    throw std::runtime_error("gt, location, immediate float, immediate float");
-}
-
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::LessThan<T, U> kind, target::Location dst,
                            qa_ir::Immediate<int> value1, qa_ir::Variable value2, Ctx& ctx)
     -> ins_list {
     throw std::runtime_error("gt, location, immediate float, immediate float");
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::LessThan<T, U> kind, target::Location dst,
                            qa_ir::Immediate<float> value1, qa_ir::Variable value2, Ctx& ctx)
     -> ins_list {
     throw std::runtime_error("gt, location, immediate float, immediate float");
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
+                           qa_ir::IsImmediate auto value1, qa_ir::Variable value2, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("gt, location, immediate float, immediate float");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
+                           qa_ir::IsEphemeral auto value1, qa_ir::Variable value2, Ctx& ctx)
+    -> ins_list {
+    throw std::runtime_error("gt, location, immediate float, immediate float");
+}
+
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
                            qa_ir::Immediate<float> value1, qa_ir::Immediate<float> value2, Ctx& ctx)
     -> ins_list {
     throw std::runtime_error("gt, location, immediate float, immediate float");
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst,
                            qa_ir::Immediate<int> value1, qa_ir::Immediate<int> value2, Ctx& ctx)
     -> ins_list {
     throw std::runtime_error("gt, location, immediate int, immediate int");
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, Register result_reg,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst, Register result_reg,
                            qa_ir::Immediate<float> value, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_for_value = ctx.NewFloatRegister(4);
@@ -639,7 +895,8 @@ auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, Regist
     return result;
 }
 
-auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, Register result_reg,
+template <bt T, bt U>
+auto OperationInstructions(qa_ir::GreaterThan<T, U> kind, target::Location dst, Register result_reg,
                            qa_ir::Immediate<int> value, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto intermediate_reg_for_value = ctx.NewIntegerRegister(4);
@@ -651,47 +908,62 @@ auto OperationInstructions(qa_ir::GreaterThan kind, target::Location dst, Regist
     return result;
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsIRLocation auto lhs_var,
+ins_list LowerCompare(qa_ir::Compare<bt::FLOAT, bt::FLOAT> kind, qa_ir::IsIRLocation auto lhs_var,
                       qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) {
     throw std::runtime_error("compare, var, var");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsIRLocation auto rhs_var,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsIRLocation auto lhs_var,
+                      qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) {
+    throw std::runtime_error("compare, var, var");
+}
+
+ins_list LowerCompare(qa_ir::Compare<bt::FLOAT, bt::FLOAT> kind, qa_ir::IsIRLocation auto rhs_var,
                       qa_ir::IsEphemeral auto lhs_temp, Ctx& ctx) {
     throw std::runtime_error("compare, var, emph");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsIRLocation auto lhs_var,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsIRLocation auto rhs_var,
+                      qa_ir::IsEphemeral auto lhs_temp, Ctx& ctx) {
+    throw std::runtime_error("compare, var, emph");
+}
+
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsIRLocation auto lhs_var,
                       qa_ir::IsImmediate auto value, Ctx& ctx) {
     throw std::runtime_error("compare, var, value");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsEphemeral auto lhs_temp,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsEphemeral auto lhs_temp,
                       qa_ir::IsEphemeral auto rhs_temp, Ctx& ctx) {
     throw std::runtime_error("compare, emph, emph");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsEphemeral auto lhs_temp,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsEphemeral auto lhs_temp,
                       qa_ir::IsIRLocation auto rhs_value, Ctx& ctx) {
     throw std::runtime_error("compare, emph, var");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsEphemeral auto lhs_temp,
+// nothing? prevents rhs_value from being a float, but we already decided that this is an int
+// compare
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsEphemeral auto lhs_temp,
                       qa_ir::IsImmediate auto rhs_value, Ctx& ctx) {
-    throw std::runtime_error("compare, emph, value");
+    std::vector<Instruction> result;
+    const auto lhs_reg = ensureRegister(lhs_temp, ctx);
+    result.push_back(CmpI(lhs_reg, rhs_value.numerical_value));
+    return result;
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsImmediate auto lhs_temp,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsImmediate auto lhs_temp,
                       qa_ir::IsImmediate auto rhs_value, Ctx& ctx) {
     throw std::runtime_error("compare, value, value");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsImmediate auto lhs_temp,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsImmediate auto lhs_temp,
                       qa_ir::IsEphemeral auto rhs_value, Ctx& ctx) {
     throw std::runtime_error("compare, value, emph");
 }
 
-ins_list LowerCompare(qa_ir::Compare kind, qa_ir::IsImmediate auto lhs_temp,
+ins_list LowerCompare(qa_ir::Compare<bt::INT, bt::INT> kind, qa_ir::IsImmediate auto lhs_temp,
                       qa_ir::IsIRLocation auto rhs_value, Ctx& ctx) {
     throw std::runtime_error("compare, value, var");
 }
@@ -705,9 +977,9 @@ ins_list InstructionForArth(ArthStructTag tag, target::Location dst,
 
 template <typename ArthStructTag>
 ins_list InstructionForArth(ArthStructTag tag, target::Location dst,
-                            qa_ir::IsIRLocation auto result_reg, qa_ir::IsEphemeral auto value,
+                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
                             Ctx& ctx) {
-    throw std::runtime_error("ir, emph");
+    return OperationInstructions(tag, dst, lhs_var, rhs_temp, ctx);
 }
 
 // should template the immediate types
@@ -732,13 +1004,13 @@ ins_list InstructionForArth(ArthStructTag tag, target::Location dst, qa_ir::IsIR
 template <typename ArthStructTag>
 ins_list InstructionForArth(ArthStructTag tag, target::Location dst, qa_ir::IsEphemeral auto value,
                             qa_ir::IsEphemeral auto rhs, Ctx& ctx) {
-    throw std::runtime_error("emph, emph");
+    return OperationInstructions(tag, dst, value, rhs, ctx);
 }
 
 template <typename ArthStructTag>
 ins_list InstructionForArth(ArthStructTag tag, target::Location dst, qa_ir::IsEphemeral auto value,
                             qa_ir::IsIRLocation auto rhs, Ctx& ctx) {
-    throw std::runtime_error("emph, ir");
+    return OperationInstructions(tag, dst, value, rhs, ctx);
 }
 
 template <typename ArthStructTag>
@@ -751,11 +1023,7 @@ template <typename ArthStructTag>
 ins_list InstructionForArth(ArthStructTag tag, target::Location dst,
                             qa_ir::IsEphemeral auto result_reg, qa_ir::IsImmediate auto value,
                             Ctx& ctx) {
-    std::vector<Instruction> result;
-    const Register left_reg = ensureRegister(result_reg, ctx);
-    auto instructions_for_operation = OperationInstructions(tag, dst, left_reg, value, ctx);
-    std::ranges::copy(instructions_for_operation, std::back_inserter(result));
-    return result;
+    return OperationInstructions(tag, dst, result_reg, value, ctx);
 }
 
 template <typename ArthStructTag>
@@ -918,7 +1186,7 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
     return result;
 }
 
-template <ast::BaseType T, ast::BaseType U>
+template <bt T, bt U>
 auto LowerInstruction(qa_ir::Add<T, U> arg, Ctx& ctx) -> ins_list {
     return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
@@ -935,15 +1203,17 @@ auto LowerInstruction(qa_ir::NotEqual arg, Ctx& ctx) -> ins_list {
     return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
 
-auto LowerInstruction(qa_ir::LessThan arg, Ctx& ctx) -> ins_list {
+template <bt T, bt U>
+auto LowerInstruction(qa_ir::LessThan<T, U> arg, Ctx& ctx) -> ins_list {
+    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
+}
+template <bt T, bt U>
+auto LowerInstruction(qa_ir::GreaterThan<T, U> arg, Ctx& ctx) -> ins_list {
     return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
 
-auto LowerInstruction(qa_ir::GreaterThan arg, Ctx& ctx) -> ins_list {
-    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
-}
-
-auto LowerInstruction(qa_ir::Compare arg, Ctx& ctx) -> ins_list {
+template <bt T, bt U>
+auto LowerInstruction(qa_ir::Compare<T, U> arg, Ctx& ctx) -> ins_list {
     ins_list result;
     auto visitor = [&](auto&& left_p, auto&& right_p) -> ins_list {
         return LowerCompare(arg, left_p, right_p, ctx);

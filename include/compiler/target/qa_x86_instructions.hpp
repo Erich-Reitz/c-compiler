@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../../include/ast/DataType.hpp"
 #include "codegenCtx.hpp"
 #include "qa_x86_locations.hpp"
 #include "qa_x86_registers.hpp"
@@ -90,6 +91,7 @@ struct StoreF : public x86Instruction {
     StackLocation dst;
     Register src;
     float value;
+
     StoreF(StackLocation p_dst, Register p_src, float p_value)
         : dst(p_dst), src(p_src), value(p_value) {}
     auto to_asm(CodegenContext& ctx) const -> void;
@@ -123,6 +125,13 @@ struct JumpLess : public x86Instruction {
     JumpLess(std::string p_label) : label(p_label) {}
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override { return "JumpLess<" + label + ">"; }
+};
+
+struct JumpLessThanEqual : public x86Instruction {
+    std::string label;
+    JumpLessThanEqual(std::string p_label) : label(p_label) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "JumpLessThanEqual<" + label + ">"; }
 };
 
 struct Jump : public x86Instruction {
@@ -196,15 +205,39 @@ struct Sub : public x86Instruction {
     }
 };
 
+template <ast::BaseType T>
 struct CmpM : public x86Instruction {
-    // TODO: not really dest / src
     Register dst;
     StackLocation src;
 
     CmpM(Register p_dst, StackLocation p_src) : dst(p_dst), src(p_src) {}
+
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "Cmp<" + register_to_asm(dst) + ", " + stack_location_at_asm(src) + ">";
+    }
+};
+
+template <>
+inline auto CmpM<ast::BaseType::INT>::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "cmp " + register_to_asm(dst) + ", " + stack_location_at_asm(src);
+    ctx.AddInstruction(ins);
+}
+template <>
+inline auto CmpM<ast::BaseType::FLOAT>::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "comiss " + register_to_asm(dst) + ", " + stack_location_at_asm(src);
+    ctx.AddInstruction(ins);
+}
+
+struct CmpMI : public x86Instruction {
+    StackLocation dst;
+    int value;
+
+    CmpMI(StackLocation p_dst, int p_value) : dst(p_dst), value(p_value) {}
+
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "CmpMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
     }
 };
 
@@ -290,6 +323,16 @@ struct SetLAl : public x86Instruction {
     }
 };
 
+struct SetLeAl : public x86Instruction {
+    Register dst;
+
+    SetLeAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetLeAl<" + register_to_asm(dst) + ">";
+    }
+};
+
 struct Label : public x86Instruction {
     std::string name;
 
@@ -362,6 +405,7 @@ using Instruction =
     std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
                  CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
-                 ImmediateLoad<float>, StoreF, SetA, CmpM>;
+                 ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
+                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI>;
 
 }  // namespace target

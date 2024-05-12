@@ -94,6 +94,11 @@ auto JumpEq::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto JumpLessThanEqual::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "jle ." + label;
+    ctx.AddInstruction(ins);
+}
+
 auto AddI::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "add " + register_to_asm(dst) + ", " + std::to_string(value);
     ctx.AddInstruction(ins);
@@ -130,6 +135,13 @@ auto CmpI::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto CmpMI::to_asm(CodegenContext& ctx) const -> void {
+    const auto source_prefix = std::string("dword");
+    const auto ins =
+        "cmp " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
+}
+
 auto CmpF::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "comiss " + register_to_asm(dst) + ", " + register_to_asm(src);
     ctx.AddInstruction(ins);
@@ -137,11 +149,6 @@ auto CmpF::to_asm(CodegenContext& ctx) const -> void {
 
 auto Cmp::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + register_to_asm(src);
-    ctx.AddInstruction(ins);
-}
-
-auto CmpM::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins = "cmp " + register_to_asm(dst) + ", " + stack_location_at_asm(src);
     ctx.AddInstruction(ins);
 }
 
@@ -183,6 +190,15 @@ auto SetNeAl::to_asm(CodegenContext& ctx) const -> void {
 
 auto SetLAl::to_asm(CodegenContext& ctx) const -> void {
     std::string result = "\tsetl al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
+
+auto SetLeAl::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tsetle al\n\t";
 
     result += "movzx ";
     result += register_to_asm(dst);

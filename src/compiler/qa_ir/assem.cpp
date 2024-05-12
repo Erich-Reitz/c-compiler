@@ -106,7 +106,15 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
          }},
         {ast::BinOpKind::Gt,
          [](Value dst, Value left, Value right) -> Operation {
-             return GreaterThan{.dst = dst, .left = left, .right = right};
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return GreaterThan<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return GreaterThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for less than");
          }},
         {ast::BinOpKind::Neq,
          [](Value dst, Value left, Value right) -> Operation {
@@ -114,7 +122,15 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
          }},
         {ast::BinOpKind::Lt,
          [](Value dst, Value left, Value right) -> Operation {
-             return LessThan{.dst = dst, .left = left, .right = right};
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return LessThan<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for less than");
          }},
     };
 
@@ -329,6 +345,14 @@ auto gen_stmt(op_list& ops, ast::FunctionCallAstNode* node, F_Ctx& ctx) -> void 
     auto result = gen_rhs(ops, node, ctx);
 }
 
+auto generate_compare(Value left, Value right) -> decltype(auto) {
+    if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+        return Compare<ast::BaseType::INT, ast::BaseType::INT>{.left = left, .right = right};
+    }
+
+    throw std::runtime_error("invalid types for compare");
+}
+
 auto gen_cond(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_label,
               Label false_label) -> void {
     auto rhs_visitor = [&ops, &ctx](auto&& arg) -> qa_ir::Value {
@@ -338,7 +362,7 @@ auto gen_cond(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx, Label true_l
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
 
-    auto compareInstruction = Compare{.left = lhs_value, .right = rhs_value};
+    auto compareInstruction = generate_compare(lhs_value, rhs_value);
     ops.push_back(compareInstruction);
     std::map<ast::BinOpKind, std::function<void(Value, Value)>> bin_op_map{
         {ast::BinOpKind::Eq,
