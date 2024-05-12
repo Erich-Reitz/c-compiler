@@ -62,8 +62,6 @@ template <typename T>
 concept IsImmediate =
     std::is_same<T, Immediate<int>>::value || std::is_same<T, Immediate<float>>::value;
 
-
-
 bool operator<(const Temp& lhs, const Temp& rhs);
 std::ostream& operator<<(std::ostream& os, const Temp& temp);
 

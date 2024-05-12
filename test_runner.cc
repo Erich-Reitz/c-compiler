@@ -155,6 +155,10 @@ RUN_TEST_CASE(IntLessThanPositiveCase, "int_less_than_positive.c");
 
 RUN_TEST_CASE(IntGreaterThanNegativeCase, "int_greater_than_negative.c");
 RUN_TEST_CASE(IntGreaterThanPositiveCase, "int_greater_than_positive.c");
+RUN_TEST_CASE(IntEqVarImmediateNeg, "int_eq_var_immediate_neg.c");
+RUN_TEST_CASE(IntEqVarImmediatePos, "int_eq_var_immediate_pos.c");
+RUN_TEST_CASE(IntLtVarImmediateNeg, "int_lt_var_immediate_neg.c");
+RUN_TEST_CASE(IntLtVarImmediatePos, "int_lt_var_immediate_pos.c");
 
 /** If Statements */
 RUN_TEST_CASE(BasicIfStatement, "basic_if_statement.c");

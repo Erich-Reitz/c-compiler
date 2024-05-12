@@ -152,8 +152,35 @@ auto Cmp::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto SetNA::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tsetna al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
+
 auto SetA::to_asm(CodegenContext& ctx) const -> void {
     std::string result = "\tseta al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
+
+auto SetNB::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tsetnb al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
+
+auto SetB::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tsetb al\n\t";
 
     result += "movzx ";
     result += register_to_asm(dst);
@@ -199,6 +226,15 @@ auto SetLAl::to_asm(CodegenContext& ctx) const -> void {
 
 auto SetLeAl::to_asm(CodegenContext& ctx) const -> void {
     std::string result = "\tsetle al\n\t";
+
+    result += "movzx ";
+    result += register_to_asm(dst);
+    result += ", al";
+    ctx.AddInstruction(result);
+}
+
+auto SetGeAl::to_asm(CodegenContext& ctx) const -> void {
+    std::string result = "\tsetge al\n\t";
 
     result += "movzx ";
     result += register_to_asm(dst);

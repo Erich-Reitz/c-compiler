@@ -283,6 +283,30 @@ struct SetA : public x86Instruction {
     auto debug_str() const -> std::string override { return "SetA<" + register_to_asm(dst) + ">"; }
 };
 
+struct SetNA : public x86Instruction {
+    Register dst;
+
+    SetNA(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "SetNA<" + register_to_asm(dst) + ">"; }
+};
+
+struct SetB : public x86Instruction {
+    Register dst;
+
+    SetB(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "SetB<" + register_to_asm(dst) + ">"; }
+};
+
+struct SetNB : public x86Instruction {
+    Register dst;
+
+    SetNB(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "SetNB<" + register_to_asm(dst) + ">"; }
+};
+
 struct SetEAl : public x86Instruction {
     Register dst;
 
@@ -320,6 +344,16 @@ struct SetLAl : public x86Instruction {
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "SetLAl<" + register_to_asm(dst) + ">";
+    }
+};
+
+struct SetGeAl : public x86Instruction {
+    Register dst;
+
+    SetGeAl(Register p_dst) : dst(p_dst) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "SetGeAl<" + register_to_asm(dst) + ">";
     }
 };
 
@@ -406,6 +440,6 @@ using Instruction =
                  CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
                  ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
-                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI>;
+                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA>;
 
 }  // namespace target

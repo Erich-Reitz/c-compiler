@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+#include "../../../include/ast/DataType.hpp"
 #include "qa_x86_instructions.hpp"
 #include "qa_x86_locations.hpp"
 #include "qa_x86_registers.hpp"

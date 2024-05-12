@@ -57,12 +57,15 @@ std::ostream& operator<<(std::ostream& os, const Compare<T, U>& cmp) {
     os << "cmp left=" << cmp.left << ", right=" << cmp.right;
     return os;
 }
-std::ostream& operator<<(std::ostream& os, const Equal& eq) {
+
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Equal<T, U>& eq) {
     os << "eq dst=" << eq.dst << ", left=" << eq.left << ", right=" << eq.right;
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const NotEqual& neq) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const NotEqual<T, U>& neq) {
     os << "neq dst=" << neq.dst << ", left=" << neq.left << ", right=" << neq.right;
     return os;
 }

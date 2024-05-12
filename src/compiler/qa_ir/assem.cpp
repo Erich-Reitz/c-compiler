@@ -102,7 +102,15 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
          }},
         {ast::BinOpKind::Eq,
          [](Value dst, Value left, Value right) -> Operation {
-             return Equal{.dst = dst, .left = left, .right = right};
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return Equal<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return Equal<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for not equal");
          }},
         {ast::BinOpKind::Gt,
          [](Value dst, Value left, Value right) -> Operation {
@@ -118,7 +126,15 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
          }},
         {ast::BinOpKind::Neq,
          [](Value dst, Value left, Value right) -> Operation {
-             return NotEqual{.dst = dst, .left = left, .right = right};
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return NotEqual<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return NotEqual<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for not equal");
          }},
         {ast::BinOpKind::Lt,
          [](Value dst, Value left, Value right) -> Operation {

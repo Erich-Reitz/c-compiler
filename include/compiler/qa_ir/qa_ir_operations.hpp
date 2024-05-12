@@ -84,21 +84,25 @@ struct Compare {
 template <ast::BaseType T, ast::BaseType U>
 std::ostream& operator<<(std::ostream& os, const Compare<T, U>& cmp);
 
+template <ast::BaseType T, ast::BaseType U>
 struct Equal {
     Value dst;
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const Equal& eq);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Equal<T, U>& eq);
 
+template <ast::BaseType T, ast::BaseType U>
 struct NotEqual {
     Value dst;
     Value left;
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const NotEqual& neq);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const NotEqual<T, U>& neq);
 
 template <ast::BaseType T, ast::BaseType U>
 struct GreaterThan {
@@ -195,10 +199,14 @@ using Operation =
     std::variant<Mov, Ret, Add<ast::BaseType::INT, ast::BaseType::INT>,
                  Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, Sub, MovR, Addr,
                  DefineStackPushed, Deref, Compare<ast::BaseType::INT, ast::BaseType::INT>, Jump,
-                 Equal, ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
-                 LabelDef, Call, DerefStore, GreaterThan<ast::BaseType::INT, ast::BaseType::INT>,
+                 Equal<ast::BaseType::INT, ast::BaseType::INT>,
+                 Equal<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, ConditionalJumpEqual,
+                 ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef, Call, DerefStore,
+                 GreaterThan<ast::BaseType::INT, ast::BaseType::INT>,
                  GreaterThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, ConditionalJumpLess,
-                 NotEqual, LessThan<ast::BaseType::INT, ast::BaseType::INT>,
+                 NotEqual<ast::BaseType::INT, ast::BaseType::INT>,
+                 NotEqual<ast::BaseType::FLOAT, ast::BaseType::FLOAT>,
+                 LessThan<ast::BaseType::INT, ast::BaseType::INT>,
                  LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, PointerOffset, DefineArray>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
@@ -206,10 +214,23 @@ using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, Conditi
 
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
 
-template <typename T>
-concept IsValueProducingCompare = std::is_same<T, GreaterThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
-                                  std::is_same<T, LessThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
-                                  std::is_same<T, Compare<ast::BaseType::INT, ast::BaseType::INT>>::value ||
-                                  std::is_same<T, Equal>::value ||
-                                  std::is_same<T, NotEqual>::value;
+template <typename O>
+concept IsValueProducingCompareOverIntegers =
+    std::is_same<O, qa_ir::GreaterThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::LessThan<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::Equal<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::NotEqual<ast::BaseType::INT, ast::BaseType::INT>>::value;
+
+template <typename O>
+concept IsCompareOverIntegers =
+    IsValueProducingCompareOverIntegers<O> ||
+    std::is_same<O, qa_ir::Compare<ast::BaseType::INT, ast::BaseType::INT>>::value;
+
+template <typename O>
+concept IsValueProducingCompareOverFloats =
+    std::is_same<O, qa_ir::GreaterThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
+    std::is_same<O, qa_ir::LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
+    std::is_same<O, qa_ir::Equal<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
+    std::is_same<O, qa_ir::NotEqual<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value;
+
 }  // namespace qa_ir
