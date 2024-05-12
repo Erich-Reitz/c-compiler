@@ -219,6 +219,11 @@ using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, Conditi
 std::ostream& operator<<(std::ostream& os, const Operation& ins);
 
 template <typename O>
+concept HasIRDestination = requires(O o) {
+    { o.dst } -> std::convertible_to<Value>;
+};
+
+template <typename O>
 concept IsArthOverIntegers =
     std::is_same<O, qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT>>::value ||
     std::is_same<O, qa_ir::Sub<ast::BaseType::INT, ast::BaseType::INT>>::value;

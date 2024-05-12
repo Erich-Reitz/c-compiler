@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "../include/compiler/qa_ir/assem.hpp"
+#include "../include/compiler/qa_ir/optpass.hpp"
 #include "../include/compiler/target/allocator.hpp"
 #include "../include/compiler/target/codegen.hpp"
 #include "../include/compiler/target/lower_ir.hpp"
@@ -87,7 +88,10 @@ int runfile(const char* sourcefile, const std::string& outfile) {
 
     if (DEBUG) print_ir(frames);
 
-    const auto lowered_frames = target::LowerIR(frames);
+    auto optimized_frames = qa_ir::move_from_temp_dest_pass(frames);
+    if (DEBUG) print_ir(optimized_frames);
+
+    const auto lowered_frames = target::LowerIR(optimized_frames);
     if (DEBUG) print_target_ir(lowered_frames);
 
     const auto rewritten = target::rewrite(lowered_frames);

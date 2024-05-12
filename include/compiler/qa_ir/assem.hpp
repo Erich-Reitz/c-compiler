@@ -32,9 +32,7 @@ struct F_Ctx {
         return variables[name];
     }
 
-    [[nodiscard]] Temp AddTemp(ast::DataType type) {
-        return Temp{.id = temp_counter++, .type = type};
-    }
+    [[nodiscard]] Temp AddTemp(ast::DataType type) { return Temp(temp_counter++, type); }
 
     [[nodiscard]] Label AddLabel() {
         auto label = "L" + std::to_string(label_counter);

@@ -43,6 +43,8 @@ struct Variable {
 struct Temp {
     int id;
     ast::DataType type = ast::DataType{.base_type = ast::BaseType::NONE};
+
+    Temp(int p_id, ast::DataType p_type) : id(p_id), type(p_type) {}
 };
 
 std::ostream& operator<<(std::ostream& os, const Value& v);
