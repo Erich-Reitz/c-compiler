@@ -26,7 +26,8 @@ std::ostream& operator<<(std::ostream& os, const DefineArray& arr) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Add& add) {
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Add<T, U>& add) {
     os << "add dst=" << add.dst << ", left=" << add.left << ", right=" << add.right;
     return os;
 }

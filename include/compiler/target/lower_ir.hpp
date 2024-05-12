@@ -34,7 +34,8 @@ struct Ctx {
     int stackPassedParameterOffset = 16;
 };
 
-[[nodiscard]] auto LowerInstruction(qa_ir::Add add, Ctx& ctx) -> std::vector<Instruction>;
+template <ast::BaseType T, ast::BaseType U>
+[[nodiscard]] auto LowerInstruction(qa_ir::Add<T, U> add, Ctx& ctx) -> std::vector<Instruction>;
 [[nodiscard]] auto LowerInstruction(qa_ir::Sub sub, Ctx& ctx) -> std::vector<Instruction>;
 [[nodiscard]] auto LowerInstruction(qa_ir::Call call, Ctx& ctx) -> std::vector<Instruction>;
 [[nodiscard]] auto LowerInstruction(qa_ir::Ret ret, Ctx& ctx) -> std::vector<Instruction>;

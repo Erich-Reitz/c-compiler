@@ -99,6 +99,11 @@ auto AddI::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto AddMI::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "add " + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
+}
+
 auto SubI::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "sub " + register_to_asm(dst) + ", " + std::to_string(value);
     ctx.AddInstruction(ins);
@@ -132,6 +137,11 @@ auto CmpF::to_asm(CodegenContext& ctx) const -> void {
 
 auto Cmp::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + register_to_asm(src);
+    ctx.AddInstruction(ins);
+}
+
+auto CmpM::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "cmp " + register_to_asm(dst) + ", " + stack_location_at_asm(src);
     ctx.AddInstruction(ins);
 }
 

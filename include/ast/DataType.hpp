@@ -5,7 +5,7 @@
 #include <string>
 
 namespace ast {
-enum class BaseType {
+enum BaseType {
     NONE,
     INT,
     FLOAT,

@@ -34,6 +34,7 @@ struct DefineArray {
 
 std::ostream& operator<<(std::ostream& os, const DefineArray& ret);
 
+template <ast::BaseType T, ast::BaseType U>
 struct Add {
     Value dst;
 
@@ -41,7 +42,8 @@ struct Add {
     Value right;
 };
 
-std::ostream& operator<<(std::ostream& os, const Add& add);
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Add<T, U>& add);
 
 struct Sub {
     Value dst;
@@ -190,10 +192,12 @@ struct PointerOffset {
 
 std::ostream& operator<<(std::ostream& os, const PointerOffset& pointer_offset);
 
-using Operation = std::variant<Mov, Ret, Add, Sub, MovR, Addr, DefineStackPushed, Deref, Compare,
-                               Jump, Equal, ConditionalJumpEqual, ConditionalJumpGreater,
-                               ConditionalJumpNotEqual, LabelDef, Call, DerefStore, GreaterThan,
-                               ConditionalJumpLess, NotEqual, LessThan, PointerOffset, DefineArray>;
+using Operation =
+    std::variant<Mov, Ret, Add<ast::BaseType::INT, ast::BaseType::INT>,
+                 Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, Sub, MovR, Addr,
+                 DefineStackPushed, Deref, Compare, Jump, Equal, ConditionalJumpEqual,
+                 ConditionalJumpGreater, ConditionalJumpNotEqual, LabelDef, Call, DerefStore,
+                 GreaterThan, ConditionalJumpLess, NotEqual, LessThan, PointerOffset, DefineArray>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
                            ConditionalJumpLess>;

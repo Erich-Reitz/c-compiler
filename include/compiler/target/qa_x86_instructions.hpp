@@ -152,6 +152,17 @@ struct AddI : public x86Instruction {
     }
 };
 
+struct AddMI : public x86Instruction {
+    StackLocation dst;
+    int value;
+
+    AddMI(StackLocation p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "AddMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
+    }
+};
+
 struct SubI : public x86Instruction {
     Register dst;
     int value;
@@ -182,6 +193,18 @@ struct Sub : public x86Instruction {
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "Sub<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
+struct CmpM : public x86Instruction {
+    // TODO: not really dest / src
+    Register dst;
+    StackLocation src;
+
+    CmpM(Register p_dst, StackLocation p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Cmp<" + register_to_asm(dst) + ", " + stack_location_at_asm(src) + ">";
     }
 };
 
@@ -339,6 +362,6 @@ using Instruction =
     std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
                  CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
-                 ImmediateLoad<float>, StoreF, SetA>;
+                 ImmediateLoad<float>, StoreF, SetA, CmpM>;
 
 }  // namespace target

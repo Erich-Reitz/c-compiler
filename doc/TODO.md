@@ -1,13 +1,13 @@
 ### TODO
 
 ### Now
-- [ ] Implement *(arr + x) dereference
+
 - Float equality / not equal operations
 - More float tests
 
-
 ### Later
-- [ ] Compile time -- real	0m30.827s
+- [ ] Compile time -- real	0m33.827s
+    - but this is linking with google test too.
 - [ ] Handle variables outside of functions
 - [ ] Implement multiplication
 - [ ] Implement division
@@ -28,4 +28,3 @@
     - This happens because all bin ops 'create' their destination in `assem.cpp`. Would either need to change there
         or add a pass to rewrite temp destinations with their actual destinations.
 - [ ] Handle single void parameter `int main(void) {}`
-- [ ] Fix std::visit in `auto translate(const st::Expression& expr, Ctx& ctx) -> Stmt`

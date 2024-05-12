@@ -86,7 +86,15 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
     static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
         {ast::BinOpKind::Add,
          [](Value dst, Value left, Value right) -> Operation {
-             return Add{.dst = dst, .left = left, .right = right};
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return Add<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for add");
          }},
         {ast::BinOpKind::Sub,
          [](Value dst, Value left, Value right) -> Operation {
