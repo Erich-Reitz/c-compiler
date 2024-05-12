@@ -12,6 +12,8 @@ struct StackLocation {
     Register src = {};
     int scale = 0;
     int offest_from_base = 0;
+
+    bool operator==(const StackLocation& other) const { return offset == other.offset; }
 };
 
 using Location = std::variant<Register, StackLocation>;

@@ -110,7 +110,9 @@ auto AddI::to_asm(CodegenContext& ctx) const -> void {
 }
 
 auto AddMI::to_asm(CodegenContext& ctx) const -> void {
-    const auto ins = "add " + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
+    std::string source_prefix = "dword";
+    const auto ins =
+        "add " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
     ctx.AddInstruction(ins);
 }
 

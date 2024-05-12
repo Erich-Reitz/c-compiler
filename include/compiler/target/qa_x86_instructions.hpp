@@ -445,11 +445,11 @@ struct Push : public x86Instruction {
     auto debug_str() const -> std::string override { return "Push<" + register_to_asm(src) + ">"; }
 };
 
-using Instruction =
-    std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
-                 CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
-                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
-                 ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
-                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI>;
+using Instruction = std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add,
+                                 SubI, Sub, Cmp, CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call,
+                                 Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
+                                 JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>,
+                                 StoreF, SetA, CmpM<ast::BaseType::INT>, CmpM<ast::BaseType::FLOAT>,
+                                 SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI, AddMI>;
 
 }  // namespace target

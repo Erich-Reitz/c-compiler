@@ -153,6 +153,16 @@ Register Ctx::AllocateNewForTemp(qa_ir::Temp t) {
     return reg;
 }
 
+Register newRegisterforValue(qa_ir::Value operand, Ctx& ctx) {
+    if (auto variable = std::get_if<qa_ir::Variable>(&operand)) {
+        return newRegisterForVariable(*variable, ctx);
+    }
+    if (auto temp = std::get_if<qa_ir::Temp>(&operand)) {
+        return ctx.AllocateNewForTemp(*temp);
+    }
+    throw std::runtime_error("Unsupported operand type");
+}
+
 VirtualRegister Ctx::NewIntegerRegister(int size) {
     if (size == 8) {
         return VirtualRegister{.id = tempCounter++, .size = size};
@@ -613,18 +623,6 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
-                           Ctx& ctx) -> ins_list {
-    std::vector<Instruction> result;
-    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
-    const auto lhs_reg = ctx.NewIntegerRegister(4);
-    result.push_back(Load(lhs_reg, lhs_stack_location));
-    result.push_back(AddI(lhs_reg, rhs_value.numerical_value));
-    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
-    return result;
-}
-
 auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
@@ -665,15 +663,52 @@ auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsImmediate auto value1, qa_ir::Variable value2, Ctx& ctx)
-    -> ins_list {
+auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, StackLocation dst,
+                                        qa_ir::IsImmediate auto lhs_value,
+                                        qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
+    const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
+    if (rhs_var_stack_location == dst) {
+        return {AddMI(rhs_var_stack_location, lhs_value.numerical_value)};
+    }
     const auto intermediate_reg = ctx.NewIntegerRegister(4);
-    result.push_back(Load(intermediate_reg, ctx.get_stack_location(value2, result)));
-    result.push_back(AddI(intermediate_reg, value1.numerical_value));
-    result.push_back(Register_To_Location(dst, intermediate_reg, ctx));
+    result.push_back(Load(intermediate_reg, rhs_var_stack_location));
+    result.push_back(AddI(intermediate_reg, lhs_value.numerical_value));
+    result.push_back(Store(dst, intermediate_reg));
     return result;
+}
+
+auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, Register dst,
+                                        qa_ir::IsImmediate auto lhs_value,
+                                        qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
+    const auto intermediate_reg = ctx.NewIntegerRegister(4);
+    result.push_back(Load(intermediate_reg, rhs_var_stack_location));
+    result.push_back(AddI(intermediate_reg, lhs_value.numerical_value));
+    result.push_back(Mov(dst, intermediate_reg));
+    return result;
+}
+
+// commutes. flipping here
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    return std::visit(
+        [kind, rhs_value, lhs_var, &ctx](auto&& arg1) {
+            return AddIntVarDestinationSpecialization(kind, arg1, rhs_value, lhs_var, ctx);
+        },
+        dst);
+}
+
+auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
+                           qa_ir::IsImmediate auto lhs_value, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
+    return std::visit(
+        [kind, lhs_value, rhs_var, &ctx](auto&& arg1) {
+            return AddIntVarDestinationSpecialization(kind, arg1, lhs_value, rhs_var, ctx);
+        },
+        dst);
 }
 
 auto OperationInstructions(qa_ir::Sub<bt::INT, bt::INT> kind, target::Location dst,
@@ -1005,7 +1040,10 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
 
 [[nodiscard]] ins_list LowerInstruction(qa_ir::Deref deref, Ctx& ctx) {
     ins_list result;
-    const auto final_temp_dest = std::get<qa_ir::Temp>(deref.dst);
+
+    const auto finalLocation = ctx.AllocateNew(deref.dst, result);
+    const auto finalRegForValue = newRegisterforValue(deref.dst, ctx);
+
     if (std::holds_alternative<qa_ir::Variable>(deref.src)) {
         const auto variable = std::get<qa_ir::Variable>(deref.src);
         const auto depth = deref.depth;
@@ -1018,8 +1056,8 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
             base_reg = tempreg;
         }
         // indirect mem access
-        const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
-        result.push_back(IndirectLoad(finalDest, base_reg));
+        result.push_back(IndirectLoad(finalRegForValue, base_reg));
+        result.push_back(Register_To_Location(finalLocation, finalRegForValue, ctx));
         return result;
     }
     if (std::holds_alternative<qa_ir::Temp>(deref.src)) {
@@ -1032,8 +1070,8 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
             reg = tempreg;
         }
         // indirect mem access
-        const auto finalDest = ctx.AllocateNewForTemp(final_temp_dest);
-        result.push_back(IndirectLoad(finalDest, reg));
+        result.push_back(IndirectLoad(finalRegForValue, reg));
+        result.push_back(Register_To_Location(finalLocation, finalRegForValue, ctx));
         return result;
     }
     throw std::runtime_error("deref switch fallthrough");
