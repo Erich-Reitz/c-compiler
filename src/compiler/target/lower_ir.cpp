@@ -240,8 +240,7 @@ Register ensureRegister(target::Register operand, Ctx& ctx) { return operand; }
 auto cmp_op(qa_ir::GreaterThan<bt::INT, bt::INT> op, bool negate)
     -> std::function<Instruction(VirtualRegister)> {
     if (negate) {
-        return
-            [](VirtualRegister reg_for_result) -> Instruction { return SetLeAl(reg_for_result); };
+        return [](VirtualRegister reg_for_result) -> Instruction { return SetLAl(reg_for_result); };
     } else {
         return [](VirtualRegister reg_for_result) -> Instruction { return SetGAl(reg_for_result); };
     }
@@ -250,8 +249,7 @@ auto cmp_op(qa_ir::GreaterThan<bt::INT, bt::INT> op, bool negate)
 auto cmp_op(qa_ir::LessThan<bt::INT, bt::INT> op, bool negate)
     -> std::function<Instruction(VirtualRegister)> {
     if (negate) {
-        return
-            [](VirtualRegister reg_for_result) -> Instruction { return SetGeAl(reg_for_result); };
+        return [](VirtualRegister reg_for_result) -> Instruction { return SetGAl(reg_for_result); };
     } else {
         return [](VirtualRegister reg_for_result) -> Instruction { return SetLAl(reg_for_result); };
     }
@@ -268,7 +266,6 @@ auto cmp_op(qa_ir::LessThan<bt::FLOAT, bt::FLOAT> op, bool negate)
 
 auto cmp_op(qa_ir::GreaterThan<bt::FLOAT, bt::FLOAT> op, bool negate)
     -> std::function<Instruction(VirtualRegister)> {
-    std::cout << "greater than float" << std::endl;
     if (negate) {
         return [](VirtualRegister reg_for_result) -> Instruction { return SetB(reg_for_result); };
     } else {
@@ -300,7 +297,7 @@ ins_list MoveBranchResultToDestination(qa_ir::IsCompareOverIntegers auto kind, t
                                        bool negate_compare, Ctx& ctx) {
     std::vector<Instruction> result;
     const auto integer_reg_for_result = ctx.NewIntegerRegister(4);
-    const auto cmp_op_lambda = cmp_op(kind, false);
+    const auto cmp_op_lambda = cmp_op(kind, negate_compare);
     result.push_back(cmp_op_lambda(integer_reg_for_result));
     result.push_back(Register_To_Location(dst, integer_reg_for_result, ctx));
     return result;
@@ -361,9 +358,12 @@ ins_list LowerCompare(qa_ir::IsCompareOverIntegers auto kind, qa_ir::IsImmediate
     throw std::runtime_error("compare, value, emph");
 }
 
-ins_list LowerCompare(qa_ir::IsCompareOverIntegers auto kind, qa_ir::IsImmediate auto lhs_temp,
-                      qa_ir::IsIRLocation auto rhs_value, Ctx& ctx) {
-    throw std::runtime_error("compare, value, var");
+ins_list LowerCompare(qa_ir::IsCompareOverIntegers auto kind, qa_ir::IsImmediate auto lhs_value,
+                      qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) {
+    std::vector<Instruction> result;
+    const auto lhs_stack_location = ctx.get_stack_location(rhs_var, result);
+    result.push_back(CmpMI(lhs_stack_location, lhs_value.numerical_value));
+    return result;
 }
 
 ins_list LowerCompare(qa_ir::IsCompareOverIntegers auto kind, qa_ir::IsImmediate auto lhs_value,
