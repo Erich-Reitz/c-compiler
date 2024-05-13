@@ -310,7 +310,12 @@ auto arth_reg_reg_op(qa_ir::Add<T, T> op) -> std::function<Instruction(Register,
 
 template <ast::BaseType T>
 auto arth_reg_reg_op(qa_ir::Sub<T, T> op) -> std::function<Instruction(Register, Register)> {
-    return [](Register reg1, Register reg2) -> Instruction { return Add(reg1, reg2); };
+    return [](Register reg1, Register reg2) -> Instruction { return Sub(reg1, reg2); };
+}
+
+template <ast::BaseType T>
+auto arth_reg_reg_op(qa_ir::Mult<T, T> op) -> std::function<Instruction(Register, Register)> {
+    return [](Register reg1, Register reg2) -> Instruction { return Mul(reg1, reg2); };
 }
 
 ins_list MoveBranchResultToDestination(qa_ir::IsCompareOverIntegers auto kind, target::Location dst,
@@ -397,9 +402,9 @@ ins_list LowerCompare(qa_ir::IsCompareOverIntegers auto kind, qa_ir::IsImmediate
     return result;
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
-                           Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                           target::Location dst, qa_ir::IsEphemeral auto lhs_temp,
+                           qa_ir::IsImmediate auto value, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
     result.push_back(AddI(lhs_reg, value.numerical_value));
@@ -663,8 +668,8 @@ auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location
     return result;
 }
 
-auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, StackLocation dst,
-                                        qa_ir::IsImmediate auto lhs_value,
+auto AddIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                                        StackLocation dst, qa_ir::IsImmediate auto lhs_value,
                                         qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
@@ -678,8 +683,8 @@ auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, Stack
     return result;
 }
 
-auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, Register dst,
-                                        qa_ir::IsImmediate auto lhs_value,
+auto AddIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                                        Register dst, qa_ir::IsImmediate auto lhs_value,
                                         qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
@@ -691,9 +696,9 @@ auto AddIntVarDestinationSpecialization(qa_ir::Add<bt::INT, bt::INT> kind, Regis
 }
 
 // commutes. flipping here
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
-                           Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                           target::Location dst, qa_ir::IsIRLocation auto lhs_var,
+                           qa_ir::IsImmediate auto rhs_value, Ctx& ctx) -> ins_list {
     return std::visit(
         [kind, rhs_value, lhs_var, &ctx](auto&& arg1) {
             return AddIntVarDestinationSpecialization(kind, arg1, rhs_value, lhs_var, ctx);
@@ -701,9 +706,9 @@ auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location d
         dst);
 }
 
-auto OperationInstructions(qa_ir::Add<bt::INT, bt::INT> kind, target::Location dst,
-                           qa_ir::IsImmediate auto lhs_value, qa_ir::IsIRLocation auto rhs_var,
-                           Ctx& ctx) -> ins_list {
+auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                           target::Location dst, qa_ir::IsImmediate auto lhs_value,
+                           qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     return std::visit(
         [kind, lhs_value, rhs_var, &ctx](auto&& arg1) {
             return AddIntVarDestinationSpecialization(kind, arg1, lhs_value, rhs_var, ctx);
@@ -1100,6 +1105,11 @@ auto LowerInstruction(qa_ir::ConditionalJumpLess cj, Ctx& ctx) -> ins_list {
 
 template <bt T, bt U>
 auto LowerInstruction(qa_ir::Add<T, U> arg, Ctx& ctx) -> ins_list {
+    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
+}
+
+template <bt T, bt U>
+auto LowerInstruction(qa_ir::Mult<T, U> arg, Ctx& ctx) -> ins_list {
     return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
 

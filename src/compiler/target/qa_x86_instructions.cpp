@@ -143,6 +143,17 @@ auto Sub::to_asm(CodegenContext& ctx) const -> void {
     }
 }
 
+auto Mul::to_asm(CodegenContext& ctx) const -> void {
+    const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dst.reg)) {
+        const auto ins = "mulss " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "imul " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    }
+}
+
 auto CmpI::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "cmp " + register_to_asm(dst) + ", " + to_asm_constant(value);
     ctx.AddInstruction(ins);

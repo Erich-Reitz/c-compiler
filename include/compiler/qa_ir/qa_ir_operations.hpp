@@ -55,6 +55,17 @@ struct Sub {
 template <ast::BaseType T, ast::BaseType U>
 std::ostream& operator<<(std::ostream& os, const Sub<T, U>& sub);
 
+template <ast::BaseType T, ast::BaseType U>
+struct Mult {
+    Value dst;
+
+    Value left;
+    Value right;
+};
+
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Mult<T, U>& add);
+
 struct MovR {
     Value dst;
     target::HardcodedRegister src;
@@ -211,7 +222,9 @@ using Operation =
                  NotEqual<ast::BaseType::INT, ast::BaseType::INT>,
                  NotEqual<ast::BaseType::FLOAT, ast::BaseType::FLOAT>,
                  LessThan<ast::BaseType::INT, ast::BaseType::INT>,
-                 LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, PointerOffset, DefineArray>;
+                 LessThan<ast::BaseType::FLOAT, ast::BaseType::FLOAT>,
+                 Mult<ast::BaseType::INT, ast::BaseType::INT>,
+                 Mult<ast::BaseType::FLOAT, ast::BaseType::FLOAT>, PointerOffset, DefineArray>;
 
 using CondJ = std::variant<ConditionalJumpEqual, ConditionalJumpGreater, ConditionalJumpNotEqual,
                            ConditionalJumpLess>;
@@ -226,12 +239,19 @@ concept HasIRDestination = requires(O o) {
 template <typename O>
 concept IsArthOverIntegers =
     std::is_same<O, qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT>>::value ||
-    std::is_same<O, qa_ir::Sub<ast::BaseType::INT, ast::BaseType::INT>>::value;
+    std::is_same<O, qa_ir::Sub<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::Mult<ast::BaseType::INT, ast::BaseType::INT>>::value;
+
+template <typename O>
+concept IsCommunativeOperationOverIntegers =
+    std::is_same<O, qa_ir::Add<ast::BaseType::INT, ast::BaseType::INT>>::value ||
+    std::is_same<O, qa_ir::Mult<ast::BaseType::INT, ast::BaseType::INT>>::value;
 
 template <typename O>
 concept IsArthOverFloats =
     std::is_same<O, qa_ir::Add<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
-    std::is_same<O, qa_ir::Sub<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value;
+    std::is_same<O, qa_ir::Sub<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value ||
+    std::is_same<O, qa_ir::Mult<ast::BaseType::FLOAT, ast::BaseType::FLOAT>>::value;
 
 template <typename O>
 concept IsValueProducingCompareOverIntegers =

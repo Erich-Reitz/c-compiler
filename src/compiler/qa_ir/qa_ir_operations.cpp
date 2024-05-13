@@ -38,6 +38,12 @@ std::ostream& operator<<(std::ostream& os, const Sub<T, U>& sub) {
     return os;
 }
 
+template <ast::BaseType T, ast::BaseType U>
+std::ostream& operator<<(std::ostream& os, const Mult<T, U>& sub) {
+    os << "mult dst=" << sub.dst << ", left=" << sub.left << ", right=" << sub.right;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const MovR& movr) {
     os << "movr dst=" << movr.dst << ", src=" << movr.src;
     return os;

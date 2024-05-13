@@ -171,7 +171,13 @@ RUN_TEST_CASE(NestedIfStatement, "nested_if_statement.c");
 RUN_TEST_CASE(IfElseStatement, "IfElse.c");
 RUN_TEST_CASE(ComplicatedIfStatement, "complicated_if.c");
 
+/** Subtraction */
 RUN_TEST_CASE(IntSubtractionInvolvingNegatives, "int_subtraction_involving_negative.c");
+RUN_TEST_CASE(IntSubtractionResultReg, "int_subtraction_nq.c");
+RUN_TEST_CASE(IntSubtractionResultReg2, "much_add_sub.c");
+
+/** multiplication */
+RUN_TEST_CASE(IntMultiplication, "int_basic_mult.c");
 
 // /** Parameter Passing  **/
 RUN_TEST_CASE(IntMax, "max.c");

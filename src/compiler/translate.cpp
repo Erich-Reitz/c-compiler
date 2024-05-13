@@ -91,6 +91,19 @@ auto translate(const std::shared_ptr<st::AdditiveExpression>& expr, Ctx& ctx) ->
     throw std::runtime_error("translate(const st::AdditiveExpression &expr, Ctx &ctx)");
 }
 
+auto translate(const std::shared_ptr<st::MultiplicativeExpression>& expr, Ctx& ctx) -> ExprNode {
+    auto lhs = translate(expr->lhs, ctx);
+    auto rhs = translate(expr->rhs, ctx);
+    std::unordered_map<st::MultiplicativeExpressionType, BinOpKind> mp = {
+        {st::MultiplicativeExpressionType::Mult, BinOpKind::Mul},
+        {st::MultiplicativeExpressionType::Div, BinOpKind::Div},
+    };
+    if (mp.find(expr->type) != mp.end()) {
+        return std::make_shared<BinaryOpAstNode>(std::move(lhs), std::move(rhs), mp[expr->type]);
+    }
+    throw std::runtime_error("translate(const st::AdditiveExpression &expr, Ctx &ctx)");
+}
+
 // takes any statement, and turns it into a binary operation.
 // so something like if(a) becomes if(a != 0)
 #pragma GCC diagnostic push

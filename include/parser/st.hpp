@@ -16,11 +16,13 @@ class UnaryExpression;
 class AdditiveExpression;
 class FunctionCallExpression;
 class ArrayAccessExpression;
+class MultiplicativeExpression;
 
 using Expression =
     std::variant<std::shared_ptr<PrimaryExpression>, std::shared_ptr<AssignmentExpression>,
                  std::shared_ptr<UnaryExpression>, std::shared_ptr<AdditiveExpression>,
-                 std::shared_ptr<FunctionCallExpression>, std::shared_ptr<ArrayAccessExpression>>;
+                 std::shared_ptr<FunctionCallExpression>, std::shared_ptr<ArrayAccessExpression>,
+                 std::shared_ptr<MultiplicativeExpression>>;
 
 inline std::ostream& operator<<(std::ostream& os, const Expression& node);
 
@@ -51,6 +53,26 @@ class PrimaryExpression {
 
     float f_value;
     std::string idenValue;
+};
+
+enum class MultiplicativeExpressionType { Mult, Div };
+
+class MultiplicativeExpression {
+   public:
+    MultiplicativeExpression(Expression lhs, Expression rhs, MultiplicativeExpressionType type);
+
+    std::ostream& print(std::ostream& os) {
+        os << "MultiplicativeExpression(lhs=";
+        os << lhs;
+        os << ", rhs=";
+        os << rhs;
+        os << ")";
+        return os;
+    }
+
+    Expression lhs;
+    Expression rhs;
+    MultiplicativeExpressionType type;
 };
 
 enum class AdditiveExpressionType { ADD, SUB, GT, EQ, NEQ, LT };

@@ -8,6 +8,10 @@ AdditiveExpression::AdditiveExpression(Expression p_lhs, Expression p_rhs,
                                        AdditiveExpressionType p_type)
     : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)), type(p_type) {}
 
+MultiplicativeExpression::MultiplicativeExpression(Expression p_lhs, Expression p_rhs,
+                                                   MultiplicativeExpressionType p_type)
+    : lhs(std::move(p_lhs)), rhs(std::move(p_rhs)), type(p_type) {}
+
 SelectionStatement::SelectionStatement(Expression p_cond, std::shared_ptr<CompoundStatement> p_then,
                                        std::shared_ptr<CompoundStatement> p_else)
     : cond(std::move(p_cond)), then(std::move(p_then)), else_(std::move(p_else)) {}

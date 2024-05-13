@@ -215,6 +215,17 @@ struct Sub : public x86Instruction {
     }
 };
 
+struct Mul : public x86Instruction {
+    Register dst;
+    Register src;
+
+    Mul(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Mul<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
 template <ast::BaseType T>
 struct CmpM : public x86Instruction {
     Register dst;
@@ -450,6 +461,6 @@ using Instruction = std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, J
                                  Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
                                  JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>,
                                  StoreF, SetA, CmpM<ast::BaseType::INT>, CmpM<ast::BaseType::FLOAT>,
-                                 SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI, AddMI>;
+                                 SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI, AddMI, Mul>;
 
 }  // namespace target

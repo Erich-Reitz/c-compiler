@@ -222,15 +222,29 @@ st::Expression parseUnaryExpression() {
     return parsePostfixExpression();
 }
 
-st::Expression parseAdditiveExpression() {
+st::Expression parseMultiplicativeExpression() {
     auto lhs = parseUnaryExpression();
+    while (match(TokType::TOKEN_STAR) || match(TokType::TOKEN_SLASH)) {
+        auto op_token = previous();
+        auto op = st::MultiplicativeExpressionType::Mult;
+        if (op_token.type == TokType::TOKEN_SLASH) {
+            op = st::MultiplicativeExpressionType::Div;
+        }
+        auto rhs = parseUnaryExpression();
+        lhs = std::make_shared<st::MultiplicativeExpression>(std::move(lhs), std::move(rhs), op);
+    }
+    return lhs;
+}
+
+st::Expression parseAdditiveExpression() {
+    auto lhs = parseMultiplicativeExpression();
     while (match(TokType::TOKEN_PLUS) || match(TokType::TOKEN_MINUS)) {
         auto op_token = previous();
         auto op = st::AdditiveExpressionType::ADD;
         if (op_token.type == TokType::TOKEN_MINUS) {
             op = st::AdditiveExpressionType::SUB;
         }
-        auto rhs = parseUnaryExpression();
+        auto rhs = parseMultiplicativeExpression();
         lhs = std::make_shared<st::AdditiveExpression>(std::move(lhs), std::move(rhs), op);
     }
     return lhs;
