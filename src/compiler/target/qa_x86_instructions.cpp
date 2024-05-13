@@ -109,6 +109,16 @@ auto AddI::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto AddM::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "add " + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+    ctx.AddInstruction(ins);
+}
+
+auto MultM::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "imul " + stack_location_at_asm(dst) + ", " + register_to_asm(src);
+    ctx.AddInstruction(ins);
+}
+
 auto MultI::to_asm(CodegenContext& ctx) const -> void {
     const auto ins = "imul " + register_to_asm(dst) + ", " + std::to_string(value);
     ctx.AddInstruction(ins);
@@ -118,13 +128,6 @@ auto AddMI::to_asm(CodegenContext& ctx) const -> void {
     std::string source_prefix = "dword";
     const auto ins =
         "add " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
-    ctx.AddInstruction(ins);
-}
-
-auto MultMI::to_asm(CodegenContext& ctx) const -> void {
-    std::string source_prefix = "dword";
-    const auto ins =
-        "imul " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
     ctx.AddInstruction(ins);
 }
 
@@ -162,6 +165,18 @@ auto Mul::to_asm(CodegenContext& ctx) const -> void {
         ctx.AddInstruction(ins);
     } else {
         const auto ins = "imul " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    }
+}
+
+auto MulRegRegInt::to_asm(CodegenContext& ctx) const -> void {
+    const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
+    if (is_float_register(hardcoded_dst.reg)) {
+        const auto ins = "mulss " + register_to_asm(dst) + ", " + register_to_asm(src);
+        ctx.AddInstruction(ins);
+    } else {
+        const auto ins = "imul " + register_to_asm(dst) + ", " + register_to_asm(src) + ", " +
+                         std::to_string(value);
         ctx.AddInstruction(ins);
     }
 }

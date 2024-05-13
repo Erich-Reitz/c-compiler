@@ -171,6 +171,28 @@ struct AddI : public x86Instruction {
     }
 };
 
+struct AddM : public x86Instruction {
+    StackLocation dst;
+    Register src;
+
+    AddM(StackLocation p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "AddM<" + stack_location_at_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
+struct MultM : public x86Instruction {
+    StackLocation dst;
+    Register src;
+
+    MultM(StackLocation p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "MultM<" + stack_location_at_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
 struct MultI : public x86Instruction {
     Register dst;
     int value;
@@ -190,17 +212,6 @@ struct AddMI : public x86Instruction {
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "AddMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
-    }
-};
-
-struct MultMI : public x86Instruction {
-    StackLocation dst;
-    int value;
-
-    MultMI(StackLocation p_dst, int p_value) : dst(p_dst), value(p_value) {}
-    auto to_asm(CodegenContext& ctx) const -> void;
-    auto debug_str() const -> std::string override {
-        return "MultMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
     }
 };
 
@@ -245,6 +256,19 @@ struct Mul : public x86Instruction {
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "Mul<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
+struct MulRegRegInt : public x86Instruction {
+    Register dst;
+    Register src;
+    int value;
+
+    MulRegRegInt(Register p_dst, Register p_src, int p_value)
+        : dst(p_dst), src(p_src), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "MulRegRegInt<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
     }
 };
 
@@ -484,6 +508,6 @@ using Instruction =
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
                  ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
                  CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI,
-                 AddMI, Mul, MultMI, MultI>;
+                 AddMI, Mul, MultI, MultM, AddM, MulRegRegInt>;
 
 }  // namespace target
