@@ -168,6 +168,18 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
              }
              throw std::runtime_error("invalid types for less than");
          }},
+        {ast::BinOpKind::Div,
+         [](Value dst, Value left, Value right) -> Operation {
+             if (GetDataType(left).is_int() && GetDataType(right).is_int()) {
+                 return Div<ast::BaseType::INT, ast::BaseType::INT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             if (GetDataType(left).is_float() && GetDataType(right).is_float()) {
+                 return Div<ast::BaseType::FLOAT, ast::BaseType::FLOAT>{
+                     .dst = dst, .left = left, .right = right};
+             }
+             throw std::runtime_error("invalid types for less than");
+         }},
     };
 
     static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>>

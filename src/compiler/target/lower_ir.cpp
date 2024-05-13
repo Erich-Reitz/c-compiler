@@ -543,7 +543,7 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::IsNonCommuteOperationOverIntegers auto kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsImmediate auto value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -714,7 +714,7 @@ auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
         dst);
 }
 
-auto OperationInstructions(qa_ir::IsNonCommuteOperationOverIntegers auto kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -741,7 +741,7 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
     return result;
 }
 
-auto OperationInstructions(qa_ir::IsNonCommuteOperationOverIntegers auto kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -803,7 +803,7 @@ auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
         dst);
 }
 
-auto OperationInstructions(qa_ir::IsNonCommuteOperationOverIntegers auto kind, target::Location dst,
+auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
                            qa_ir::IsImmediate auto lhs_value, qa_ir::IsIRLocation auto rhs_var,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
@@ -1205,13 +1205,18 @@ auto LowerInstruction(qa_ir::Add<T, U> arg, Ctx& ctx) -> ins_list {
 }
 
 template <bt T, bt U>
+auto LowerInstruction(qa_ir::Sub<T, U> arg, Ctx& ctx) -> ins_list {
+    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
+}
+
+template <bt T, bt U>
 auto LowerInstruction(qa_ir::Mult<T, U> arg, Ctx& ctx) -> ins_list {
     return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
 
 template <bt T, bt U>
-auto LowerInstruction(qa_ir::Sub<T, U> arg, Ctx& ctx) -> ins_list {
-    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
+auto LowerInstruction(qa_ir::Div<T, U> arg, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("Div not implemented");
 }
 
 template <bt T, bt U>

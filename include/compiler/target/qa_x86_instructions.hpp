@@ -272,6 +272,17 @@ struct MulRegRegInt : public x86Instruction {
     }
 };
 
+struct Div : public x86Instruction {
+    Register dst;
+    Register src;
+
+    Div(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "Div<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
+    }
+};
+
 template <ast::BaseType T>
 struct CmpM : public x86Instruction {
     Register dst;
