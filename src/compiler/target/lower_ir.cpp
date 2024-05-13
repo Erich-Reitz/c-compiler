@@ -318,6 +318,26 @@ auto arth_reg_reg_op(qa_ir::Mult<T, T> op) -> std::function<Instruction(Register
     return [](Register reg1, Register reg2) -> Instruction { return Mul(reg1, reg2); };
 }
 
+template <ast::BaseType T>
+auto arth_mem_int_op(qa_ir::Add<T, T> op) -> std::function<Instruction(StackLocation, int)> {
+    return [](StackLocation location, int value) -> Instruction { return AddMI(location, value); };
+}
+
+template <ast::BaseType T>
+auto arth_mem_int_op(qa_ir::Mult<T, T> op) -> std::function<Instruction(StackLocation, int)> {
+    return [](StackLocation location, int value) -> Instruction { return MultMI(location, value); };
+}
+
+template <ast::BaseType T>
+auto arth_reg_int_op(qa_ir::Add<T, T> op) -> std::function<Instruction(Register, int)> {
+    return [](Register location, int value) -> Instruction { return AddI(location, value); };
+}
+
+template <ast::BaseType T>
+auto arth_reg_int_op(qa_ir::Mult<T, T> op) -> std::function<Instruction(Register, int)> {
+    return [](Register location, int value) -> Instruction { return MultI(location, value); };
+}
+
 ins_list MoveBranchResultToDestination(qa_ir::IsCompareOverIntegers auto kind, target::Location dst,
                                        bool negate_compare, Ctx& ctx) {
     std::vector<Instruction> result;
@@ -407,7 +427,8 @@ auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
                            qa_ir::IsImmediate auto value, Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    result.push_back(AddI(lhs_reg, value.numerical_value));
+    const auto lambda_op = arth_reg_int_op(kind);
+    result.push_back(lambda_op(lhs_reg, value.numerical_value));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
 }
@@ -668,29 +689,35 @@ auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location
     return result;
 }
 
-auto AddIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
-                                        StackLocation dst, qa_ir::IsImmediate auto lhs_value,
-                                        qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
+auto CommuteIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                                            StackLocation dst, qa_ir::IsImmediate auto lhs_value,
+                                            qa_ir::IsIRLocation auto rhs_var, Ctx& ctx)
+    -> ins_list {
     std::vector<Instruction> result;
     const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
     if (rhs_var_stack_location == dst) {
-        return {AddMI(rhs_var_stack_location, lhs_value.numerical_value)};
+        const auto lambda = arth_mem_int_op(kind);
+        result.push_back(lambda(dst, lhs_value.numerical_value));
+        return result;
     }
     const auto intermediate_reg = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg, rhs_var_stack_location));
-    result.push_back(AddI(intermediate_reg, lhs_value.numerical_value));
+    const auto lambda = arth_reg_int_op(kind);
+    result.push_back(lambda(intermediate_reg, lhs_value.numerical_value));
     result.push_back(Store(dst, intermediate_reg));
     return result;
 }
 
-auto AddIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
-                                        Register dst, qa_ir::IsImmediate auto lhs_value,
-                                        qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
+auto CommuteIntVarDestinationSpecialization(qa_ir::IsCommunativeOperationOverIntegers auto kind,
+                                            Register dst, qa_ir::IsImmediate auto lhs_value,
+                                            qa_ir::IsIRLocation auto rhs_var, Ctx& ctx)
+    -> ins_list {
     std::vector<Instruction> result;
     const auto rhs_var_stack_location = ctx.get_stack_location(rhs_var, result);
     const auto intermediate_reg = ctx.NewIntegerRegister(4);
     result.push_back(Load(intermediate_reg, rhs_var_stack_location));
-    result.push_back(AddI(intermediate_reg, lhs_value.numerical_value));
+    const auto lambda = arth_reg_int_op(kind);
+    result.push_back(lambda(intermediate_reg, lhs_value.numerical_value));
     result.push_back(Mov(dst, intermediate_reg));
     return result;
 }
@@ -701,17 +728,18 @@ auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
                            qa_ir::IsImmediate auto rhs_value, Ctx& ctx) -> ins_list {
     return std::visit(
         [kind, rhs_value, lhs_var, &ctx](auto&& arg1) {
-            return AddIntVarDestinationSpecialization(kind, arg1, rhs_value, lhs_var, ctx);
+            return CommuteIntVarDestinationSpecialization(kind, arg1, rhs_value, lhs_var, ctx);
         },
         dst);
 }
 
+// commutes. (but) not flipping here
 auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
                            target::Location dst, qa_ir::IsImmediate auto lhs_value,
                            qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     return std::visit(
         [kind, lhs_value, rhs_var, &ctx](auto&& arg1) {
-            return AddIntVarDestinationSpecialization(kind, arg1, lhs_value, rhs_var, ctx);
+            return CommuteIntVarDestinationSpecialization(kind, arg1, lhs_value, rhs_var, ctx);
         },
         dst);
 }

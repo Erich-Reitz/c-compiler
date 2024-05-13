@@ -109,10 +109,22 @@ auto AddI::to_asm(CodegenContext& ctx) const -> void {
     ctx.AddInstruction(ins);
 }
 
+auto MultI::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "imul " + register_to_asm(dst) + ", " + std::to_string(value);
+    ctx.AddInstruction(ins);
+}
+
 auto AddMI::to_asm(CodegenContext& ctx) const -> void {
     std::string source_prefix = "dword";
     const auto ins =
         "add " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
+    ctx.AddInstruction(ins);
+}
+
+auto MultMI::to_asm(CodegenContext& ctx) const -> void {
+    std::string source_prefix = "dword";
+    const auto ins =
+        "imul " + source_prefix + stack_location_at_asm(dst) + ", " + to_asm_constant(value);
     ctx.AddInstruction(ins);
 }
 

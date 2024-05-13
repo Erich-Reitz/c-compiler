@@ -178,6 +178,7 @@ RUN_TEST_CASE(IntSubtractionResultReg2, "much_add_sub.c");
 
 /** multiplication */
 RUN_TEST_CASE(IntMultiplication, "int_basic_mult.c");
+RUN_TEST_CASE(IntVarValMult, "int_var_val_mult.c");
 
 // /** Parameter Passing  **/
 RUN_TEST_CASE(IntMax, "max.c");

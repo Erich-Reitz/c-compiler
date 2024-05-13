@@ -171,6 +171,17 @@ struct AddI : public x86Instruction {
     }
 };
 
+struct MultI : public x86Instruction {
+    Register dst;
+    int value;
+
+    MultI(Register p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "MultI<" + register_to_asm(dst) + ", " + std::to_string(value) + ">";
+    }
+};
+
 struct AddMI : public x86Instruction {
     StackLocation dst;
     int value;
@@ -179,6 +190,17 @@ struct AddMI : public x86Instruction {
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "AddMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
+    }
+};
+
+struct MultMI : public x86Instruction {
+    StackLocation dst;
+    int value;
+
+    MultMI(StackLocation p_dst, int p_value) : dst(p_dst), value(p_value) {}
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override {
+        return "MultMI<" + stack_location_at_asm(dst) + ", " + std::to_string(value) + ">";
     }
 };
 
@@ -456,11 +478,12 @@ struct Push : public x86Instruction {
     auto debug_str() const -> std::string override { return "Push<" + register_to_asm(src) + ">"; }
 };
 
-using Instruction = std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add,
-                                 SubI, Sub, Cmp, CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call,
-                                 Lea, IndirectLoad, JumpGreater, IndirectStore, PushI, Push,
-                                 JumpLess, SetNeAl, SetLAl, ZeroExtend, ImmediateLoad<float>,
-                                 StoreF, SetA, CmpM<ast::BaseType::INT>, CmpM<ast::BaseType::FLOAT>,
-                                 SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI, AddMI, Mul>;
+using Instruction =
+    std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
+                 CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
+                 IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
+                 ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
+                 CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI,
+                 AddMI, Mul, MultMI, MultI>;
 
 }  // namespace target
