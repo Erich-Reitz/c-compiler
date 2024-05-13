@@ -129,7 +129,9 @@ StackLocation Ctx::get_stack_location(const qa_ir::Variable& v, ins_list& instru
 }
 
 Register newRegisterForVariable(qa_ir::Variable operand, Ctx& ctx) {
+    std::cout << "newregisterfor: " << operand.name << std::endl;
     if (operand.type.is_float()) {
+        std::cout << "float" << std::endl;
         return ctx.NewFloatRegister(4);
     }
     if (operand.type.is_int()) {
@@ -164,6 +166,7 @@ Register newRegisterforValue(qa_ir::Value operand, Ctx& ctx) {
 }
 
 VirtualRegister Ctx::NewIntegerRegister(int size) {
+    std::cout << "something called new int reg" << std::endl;
     if (size == 8) {
         return VirtualRegister{.id = tempCounter++, .size = size};
     }
@@ -679,7 +682,6 @@ auto OperationInstructions(qa_ir::IsValueProducingCompareOverFloats auto kind, t
 // compare
 auto OperationInstructions(qa_ir::IsValueProducingCompareOverFloats auto kind, target::Location dst,
                            qa_ir::Variable lhs, qa_ir::IsImmediate auto rhs, Ctx& ctx) -> ins_list {
-    std::cout << "var lhs, imm rhs\n";
     std::vector<Instruction> result;
     const auto intermediate_reg_for_rhs_value = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(intermediate_reg_for_rhs_value, rhs.numerical_value));
@@ -756,7 +758,7 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
-    const auto lhs_reg = ctx.NewIntegerRegister(4);
+    const auto lhs_reg = ctx.NewFloatRegister(4);
     result.push_back(Load(lhs_reg, lhs_stack_location));
     const auto rhs_reg = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(rhs_reg, rhs_value.numerical_value));
@@ -855,7 +857,15 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
 auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::IsImmediate auto lhs_value, qa_ir::Variable rhs_value, Ctx& ctx)
     -> ins_list {
-    throw std::runtime_error("arth float, imm, var");
+    std::vector<Instruction> result;
+    const auto lhs_reg = ctx.NewFloatRegister(4);
+    result.push_back(ImmediateLoad<float>(lhs_reg, lhs_value.numerical_value));
+    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
+    const auto arth_op_lambda = arth_reg_reg_op(kind);
+    result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
 }
 
 auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
@@ -872,6 +882,7 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
 
 auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
+    std::cout << "arth over floats, var, var" << std::endl;
     std::vector<Instruction> result;
     const auto lhs_reg = newRegisterForVariable(value1, ctx);
     result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));
