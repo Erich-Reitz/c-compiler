@@ -83,7 +83,7 @@ auto gen_rhs(op_list& ops, ast::BinaryOpAstNode* node, F_Ctx& ctx) -> Value {
     auto lhs_value = std::visit(rhs_visitor, node->lhs.node);
     auto rhs_value = std::visit(rhs_visitor, node->rhs.node);
 
-    static const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
+    const std::map<ast::BinOpKind, std::function<Operation(Value, Value, Value)>> bin_op_map{
         {ast::BinOpKind::Add,
          [](Value dst, Value left, Value right) -> Operation {
              if (GetDataType(left).is_int() && GetDataType(right).is_int()) {

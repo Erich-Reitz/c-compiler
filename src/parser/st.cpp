@@ -51,7 +51,15 @@ ArrayAccessExpression::ArrayAccessExpression(std::string p_name, Expression p_in
     : name(std::move(p_name)), index(std::move(p_index)) {}
 
 std::ostream& ForStatement::print(std::ostream& os) const {
-    os << "for stmt";
+    os << "Forstatement(";
+    init.print(os);
+    if (cond.has_value()) {
+        os << cond.value();
+    }
+    if (inc.has_value()) {
+        os << inc.value();
+    }
+    body->print(os);
     return os;
 }
 

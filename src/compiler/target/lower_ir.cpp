@@ -797,8 +797,8 @@ auto OperationInstructions(qa_ir::IsCommunativeOperationOverIntegers auto kind,
                            target::Location dst, qa_ir::IsImmediate auto lhs_value,
                            qa_ir::IsIRLocation auto rhs_var, Ctx& ctx) -> ins_list {
     return std::visit(
-        [kind, lhs_value, rhs_var, &ctx](auto&& arg1) {
-            return CommuteIntVarDestinationSpecialization(kind, arg1, lhs_value, rhs_var, ctx);
+        [kind, lhs_value, rhs_var, &ctx](auto&& dest_v) {
+            return CommuteIntVarDestinationSpecialization(kind, dest_v, lhs_value, rhs_var, ctx);
         },
         dst);
 }

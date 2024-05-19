@@ -136,21 +136,19 @@ class UnaryExpression {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Expression& expr) {
-    os << "Expression(expr=";
     if (std::holds_alternative<std::shared_ptr<PrimaryExpression>>(expr)) {
         return std::get<std::shared_ptr<PrimaryExpression>>(expr)->print(os);
     }
     if (std::holds_alternative<std::shared_ptr<AssignmentExpression>>(expr)) {
-        os << "AssignmentExpression(";
         std::get<std::shared_ptr<AssignmentExpression>>(expr).get()->print(os);
-        os << ")";
     }
     if (std::holds_alternative<std::shared_ptr<UnaryExpression>>(expr)) {
-        os << "UnaryExpression(";
         std::get<std::shared_ptr<UnaryExpression>>(expr).get()->print(os);
-        os << ")";
     }
-    return os << ")";
+    if (std::holds_alternative<std::shared_ptr<AdditiveExpression>>(expr)) {
+        std::get<std::shared_ptr<AdditiveExpression>>(expr).get()->print(os);
+    }
+    return os;
 }
 
 class FunctionCallExpression {
@@ -478,19 +476,19 @@ class ForStatement {
 
 inline std::ostream& operator<<(std::ostream& os, const Statement& node) {
     if (std::holds_alternative<std::shared_ptr<ExpressionStatement>>(node.stmt)) {
-        os << "Statement(ExpressionStatement(";
+        os << "Statement(";
         return std::get<std::shared_ptr<ExpressionStatement>>(node.stmt)->print(os) << "))";
     }
     if (std::holds_alternative<std::shared_ptr<SelectionStatement>>(node.stmt)) {
-        os << "Statement(SelectionStatement(";
+        os << "Statement(";
         return std::get<std::shared_ptr<SelectionStatement>>(node.stmt)->print(os) << "))";
     }
     if (std::holds_alternative<std::shared_ptr<ForStatement>>(node.stmt)) {
-        os << "Statement(ForStatement(";
+        os << "Statement(";
         return std::get<std::shared_ptr<ForStatement>>(node.stmt)->print(os) << "))";
     }
     if (std::holds_alternative<std::shared_ptr<ReturnStatement>>(node.stmt)) {
-        os << "Statement(ReturnStatement(";
+        os << "Statement(";
         return std::get<std::shared_ptr<ReturnStatement>>(node.stmt)->print(os) << "))";
     }
     throw std::runtime_error("Not implemented");
