@@ -322,6 +322,13 @@ auto arth_reg_reg_op(qa_ir::Mult<T, T> op) -> std::function<Instruction(Register
 }
 
 template <ast::BaseType T>
+auto arth_reg_reg_op(qa_ir::Div<T, T> op) -> std::function<Instruction(Register, Register)> {
+    return [](Register reg1, Register reg2) -> Instruction {
+        throw std::runtime_error("shouldn't be called");
+    };
+}
+
+template <ast::BaseType T>
 auto arth_mem_int_op(qa_ir::Add<T, T> op) -> std::function<ins_list(StackLocation, int, Ctx&)> {
     return [](StackLocation location, int value, Ctx& ctx) -> ins_list {
         return {AddMI(location, value)};
@@ -741,6 +748,18 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
     return result;
 }
 
+auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
+                           Ctx& ctx) -> ins_list {
+    std::vector<Instruction> result;
+    const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
+    const auto lhs_reg = ctx.NewIntegerRegister(4);
+    result.push_back(Load(lhs_reg, lhs_stack_location));
+    result.push_back(SubI(lhs_reg, rhs_value.numerical_value));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+
 auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
                            Ctx& ctx) -> ins_list {
@@ -816,6 +835,48 @@ auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Loc
     return result;
 }
 
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsIRLocation auto rhs_var,
+//                            Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs var");
+// }
+
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto
+//                            rhs_immediate, Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs int");
+// }
+
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsEphemeral auto rhs_temp,
+//                            Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs temp");
+// }
+
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsIRLocation auto rhs_var,
+//                            Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs var");
+// }
+
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsIRLocation auto rhs_var,
+//                            Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs int");
+// }
+
+// auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+//                            qa_ir::IsIRLocation auto lhs_var, qa_ir::IsIRLocation auto rhs_var,
+//                            Ctx& ctx) -> ins_list {
+//     throw std::runtime_error("division lhs var, rhs temp");
+// }
+
+template <typename LHS_TYPE, typename RHS_TYPE>
+auto OperationInstructions(qa_ir::FloatDivision auto kind, target::Location dst, LHS_TYPE lhs_value,
+                           RHS_TYPE rhs_var, Ctx& ctx) -> ins_list {
+    throw std::runtime_error("division not implemented for floats");
+}
+
 auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
                            qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsEphemeral auto rhs_value,
                            Ctx& ctx) -> ins_list {
@@ -829,12 +890,12 @@ auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location
 }
 
 auto OperationInstructions(qa_ir::IsArthOverIntegers auto kind, target::Location dst,
-                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::Variable rhs_value, Ctx& ctx)
-    -> ins_list {
+                           qa_ir::IsEphemeral auto lhs_temp, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ensureRegister(lhs_temp, ctx);
-    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
+    const auto rhs_reg = newRegisterForVariable(rhs_var, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_var, result)));
     const auto arth_op_lambda = arth_reg_reg_op(kind);
     result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
@@ -855,13 +916,13 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
 }
 
 auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
-                           qa_ir::IsImmediate auto lhs_value, qa_ir::Variable rhs_value, Ctx& ctx)
-    -> ins_list {
+                           qa_ir::IsImmediate auto lhs_value, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_reg = ctx.NewFloatRegister(4);
     result.push_back(ImmediateLoad<float>(lhs_reg, lhs_value.numerical_value));
-    const auto rhs_reg = newRegisterForVariable(rhs_value, ctx);
-    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_value, result)));
+    const auto rhs_reg = newRegisterForVariable(rhs_var, ctx);
+    result.push_back(Load(rhs_reg, ctx.get_stack_location(rhs_var, result)));
     const auto arth_op_lambda = arth_reg_reg_op(kind);
     result.push_back(arth_op_lambda(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
@@ -1216,7 +1277,7 @@ auto LowerInstruction(qa_ir::Mult<T, U> arg, Ctx& ctx) -> ins_list {
 
 template <bt T, bt U>
 auto LowerInstruction(qa_ir::Div<T, U> arg, Ctx& ctx) -> ins_list {
-    throw std::runtime_error("Div not implemented");
+    return LowerArth(arg, arg.dst, arg.left, arg.right, ctx);
 }
 
 template <bt T, bt U>

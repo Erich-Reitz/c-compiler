@@ -183,7 +183,7 @@ RUN_TEST_CASE(IntMultAgainstSelf, "int_mult_against_self.c");
 RUN_TEST_CASE(FloatVarMult, "float_mult.c");
 
 /** division */
-// RUN_TEST_CASE(IntDivision, "int_division.c");
+RUN_TEST_CASE(IntDivision, "int_division.c");
 
 // /** Parameter Passing  **/
 RUN_TEST_CASE(IntMax, "max.c");

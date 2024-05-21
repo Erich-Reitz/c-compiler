@@ -2,12 +2,12 @@
 
 ### Now
 
-- Float equality / not equal operations
+- [ ] Implement division
+    - [ ] Probably using zero extend inappropriately currently, where should be using sign extend
 
 
 ### Later
 - [ ] Handle variables outside of functions
-- [ ] Implement multiplication
 - [ ] Implement division
 - [ ] Implement <=
 - [ ] Implement >=
