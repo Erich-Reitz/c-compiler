@@ -757,16 +757,26 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
     return result;
 }
 
+// TODO: gcc  -0 implements via multiplications
 auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
-                           qa_ir::IsIRLocation auto lhs_var, qa_ir::IsImmediate auto rhs_value,
+                           qa_ir::IsIRLocation auto lhs_var, qa_ir::Immediate<int> rhs_value,
                            Ctx& ctx) -> ins_list {
     std::vector<Instruction> result;
     const auto lhs_stack_location = ctx.get_stack_location(lhs_var, result);
     const auto lhs_reg = ctx.NewIntegerRegister(4);
     result.push_back(Load(lhs_reg, lhs_stack_location));
-    result.push_back(SubI(lhs_reg, rhs_value.numerical_value));
+    const auto rhs_reg = ctx.NewIntegerRegister(4);
+    result.push_back(LoadI{rhs_reg, rhs_value.numerical_value});
+    result.push_back(CDQ{});
+    result.push_back(IDiv(lhs_reg, rhs_reg));
     result.push_back(Register_To_Location(dst, lhs_reg, ctx));
     return result;
+}
+
+auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+                           qa_ir::IsIRLocation auto lhs_var, qa_ir::Immediate<float> rhs_value,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("shouldn't get called");
 }
 
 auto OperationInstructions(qa_ir::IsSubtractionOfIntegers auto kind, target::Location dst,
@@ -859,9 +869,25 @@ auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location ds
 }
 
 auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
-                           qa_ir::IsImmediate auto lhs_var, qa_ir::IsIRLocation auto rhs_temp,
+                           qa_ir::Immediate<int> lhs_value, qa_ir::IsIRLocation auto rhs_var,
                            Ctx& ctx) -> ins_list {
-    throw std::runtime_error("division lhs int, rhs var");
+    std::vector<Instruction> result;
+
+    const auto lhs_reg = ctx.NewIntegerRegister(4);
+    result.push_back(LoadI(lhs_reg, lhs_value.numerical_value));
+
+    const auto rhs_reg = ctx.NewIntegerRegister(4);
+    const auto rhs_stack_location = ctx.get_stack_location(rhs_var, result);
+    result.push_back(Load{rhs_reg, rhs_stack_location});
+    result.push_back(CDQ{});
+    result.push_back(IDiv(lhs_reg, rhs_reg));
+    result.push_back(Register_To_Location(dst, lhs_reg, ctx));
+    return result;
+}
+auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
+                           qa_ir::Immediate<float> lhs_value, qa_ir::IsIRLocation auto rhs_var,
+                           Ctx& ctx) -> ins_list {
+    throw std::runtime_error("shouldn't get called");
 }
 
 auto OperationInstructions(qa_ir::IntegerDivision auto kind, target::Location dst,
@@ -947,7 +973,6 @@ auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location d
 
 auto OperationInstructions(qa_ir::IsArthOverFloats auto kind, target::Location dst,
                            qa_ir::Variable value1, qa_ir::Variable value2, Ctx& ctx) -> ins_list {
-    std::cout << "arth over floats, var, var" << std::endl;
     std::vector<Instruction> result;
     const auto lhs_reg = newRegisterForVariable(value1, ctx);
     result.push_back(Load(lhs_reg, ctx.get_stack_location(value1, result)));

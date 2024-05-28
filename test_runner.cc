@@ -184,6 +184,8 @@ RUN_TEST_CASE(FloatVarMult, "float_mult.c");
 
 /** division */
 RUN_TEST_CASE(IntDivision, "int_division.c");
+RUN_TEST_CASE(IntDivisionByRhsImmediate, "int_division_rhs_im.c");
+RUN_TEST_CASE(IntDivisionByLhsImmediate, "int_division_lhs_im.c");
 
 // /** Parameter Passing  **/
 RUN_TEST_CASE(IntMax, "max.c");
