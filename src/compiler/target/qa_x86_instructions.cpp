@@ -181,15 +181,10 @@ auto MulRegRegInt::to_asm(CodegenContext& ctx) const -> void {
     }
 }
 
-auto Div::to_asm(CodegenContext& ctx) const -> void {
-    const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
-    if (is_float_register(hardcoded_dst.reg)) {
-        const auto ins = "mulss " + register_to_asm(dst) + ", " + register_to_asm(src);
-        ctx.AddInstruction(ins);
-    } else {
-        const auto ins = "imul " + register_to_asm(dst) + ", " + register_to_asm(src);
-        ctx.AddInstruction(ins);
-    }
+auto IDiv::to_asm(CodegenContext& ctx) const -> void {
+    // const auto hardcoded_dst = std::get<HardcodedRegister>(dst);
+    const auto ins = "idiv " + register_to_asm(src);
+    ctx.AddInstruction(ins);
 }
 
 auto CmpI::to_asm(CodegenContext& ctx) const -> void {
@@ -345,6 +340,11 @@ auto Push::to_asm(CodegenContext& ctx) const -> void {
     // can't push registers that aren't 8 bytes
     source_reg.size = 8;
     const auto ins = "push " + register_to_asm(source_reg);
+    ctx.AddInstruction(ins);
+}
+
+auto CDQ::to_asm(CodegenContext& ctx) const -> void {
+    const auto ins = "cdq";
     ctx.AddInstruction(ins);
 }
 

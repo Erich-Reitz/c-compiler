@@ -272,11 +272,12 @@ struct MulRegRegInt : public x86Instruction {
     }
 };
 
-struct Div : public x86Instruction {
+struct IDiv : public x86Instruction {
+    // (needs to be -AX)
     Register dst;
     Register src;
 
-    Div(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
+    IDiv(Register p_dst, Register p_src) : dst(p_dst), src(p_src) {}
     auto to_asm(CodegenContext& ctx) const -> void;
     auto debug_str() const -> std::string override {
         return "Div<" + register_to_asm(dst) + ", " + register_to_asm(src) + ">";
@@ -513,12 +514,17 @@ struct Push : public x86Instruction {
     auto debug_str() const -> std::string override { return "Push<" + register_to_asm(src) + ">"; }
 };
 
+struct CDQ : public x86Instruction {
+    auto to_asm(CodegenContext& ctx) const -> void;
+    auto debug_str() const -> std::string override { return "CDQ<>"; }
+};
+
 using Instruction =
     std::variant<Mov, ImmediateLoad<int>, StoreI, Store, Load, Jump, AddI, Add, SubI, Sub, Cmp,
                  CmpI, CmpF, SetEAl, SetGAl, Label, JumpEq, Call, Lea, IndirectLoad, JumpGreater,
                  IndirectStore, PushI, Push, JumpLess, SetNeAl, SetLAl, ZeroExtend,
                  ImmediateLoad<float>, StoreF, SetA, CmpM<ast::BaseType::INT>,
                  CmpM<ast::BaseType::FLOAT>, SetLeAl, CmpMI, SetGeAl, SetB, SetNB, SetNA, LoadI,
-                 AddMI, Mul, MultI, MultM, AddM, MulRegRegInt>;
+                 AddMI, Mul, MultI, MultM, AddM, MulRegRegInt, IDiv, CDQ>;
 
 }  // namespace target
