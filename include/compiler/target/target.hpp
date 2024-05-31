@@ -17,26 +17,26 @@ namespace target {
 int sixteenByteAlign(int size);
 
 template <typename T>
-concept IsX86Instruction = std::derived_from<T, x86Instruction>;
+concept IsTargetInstruction = std::derived_from<T, TargetInstruction>;
 
-// requires IsX86Instruction<T>
+// requires IsTargetInstruction<T>
 template <typename T>
-concept InstructionWithImmediateRegisterSource = IsX86Instruction<T> && requires(T t) {
+concept InstructionWithImmediateRegisterSource = IsTargetInstruction<T> && requires(T t) {
     { t.src } -> std::convertible_to<Register>;
 };
 
 template <typename T>
-concept InstructionWithComputedRegisterSource = IsX86Instruction<T> && requires(T t) {
+concept InstructionWithComputedRegisterSource = IsTargetInstruction<T> && requires(T t) {
     { t.src.src } -> std::convertible_to<Register>;
 };
 
 template <typename T>
-concept InstructionWithImmediateRegisterDest = IsX86Instruction<T> && requires(T t) {
+concept InstructionWithImmediateRegisterDest = IsTargetInstruction<T> && requires(T t) {
     { t.dst } -> std::convertible_to<Register>;
 };
 
 template <typename T>
-concept InstructionWithComputedRegisterDest = IsX86Instruction<T> && requires(T t) {
+concept InstructionWithComputedRegisterDest = IsTargetInstruction<T> && requires(T t) {
     { t.dst.src } -> std::convertible_to<Register>;
 };
 
@@ -60,7 +60,9 @@ std::optional<VirtualRegister> get_src_register(T& ins) {
     return std::nullopt;
 }
 
-std::optional<VirtualRegister> get_src_register(IsX86Instruction auto& ins) { return std::nullopt; }
+std::optional<VirtualRegister> get_src_register(IsTargetInstruction auto& ins) {
+    return std::nullopt;
+}
 
 template <typename T>
     requires InstructionWithComputedRegisterDest<T>
@@ -80,11 +82,11 @@ std::optional<VirtualRegister> get_dest_register(T& ins) {
     return std::nullopt;
 }
 
-std::optional<VirtualRegister> get_dest_register(IsX86Instruction auto& ins) {
+std::optional<VirtualRegister> get_dest_register(IsTargetInstruction auto& ins) {
     return std::nullopt;
 }
 
-std::optional<int> src_register_id(IsX86Instruction auto& ins) {
+std::optional<int> src_register_id(IsTargetInstruction auto& ins) {
     const auto reg = get_src_register(ins);
     if (reg.has_value()) {
         return reg->id;
@@ -92,7 +94,7 @@ std::optional<int> src_register_id(IsX86Instruction auto& ins) {
     return std::nullopt;
 }
 
-std::optional<int> dest_register_id(IsX86Instruction auto& ins) {
+std::optional<int> dest_register_id(IsTargetInstruction auto& ins) {
     auto reg = get_dest_register(ins);
     if (reg.has_value()) {
         return reg->id;
@@ -112,7 +114,7 @@ void set_src_register(T& ins, Register reg) {
     ins.src.src = reg;
 }
 
-void set_src_register(IsX86Instruction auto& ins, Register reg) {
+void set_src_register(IsTargetInstruction auto& ins, Register reg) {
     throw std::runtime_error(
         "set_src_register called on an instruction that does not have a src register");
 }
@@ -129,7 +131,7 @@ void set_dest_register(T& ins, Register reg) {
     ins.dst.src = reg;
 }
 
-void set_dest_register(IsX86Instruction auto& ins, Register reg) {
+void set_dest_register(IsTargetInstruction auto& ins, Register reg) {
     throw std::runtime_error(
         "set_dest_register called on an instruction that does not have a src register");
 }

@@ -61,12 +61,4 @@ inline const std::vector<BaseRegister> general_regs = {
 
 bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
-using Register = std::variant<HardcodedRegister, VirtualRegister>;
-
-[[nodiscard]] auto is_float_register(Register p_reg) -> bool;
-
-[[nodiscard]] std::string register_to_asm(Register reg);
-// comparison operators for registers
-bool operator<(const Register& lhs, const Register& rhs);
-
 }  // namespace target

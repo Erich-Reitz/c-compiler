@@ -4,6 +4,7 @@
 #include "codegenCtx.hpp"
 #include "qa_x86_locations.hpp"
 #include "qa_x86_registers.hpp"
+#include "register.hpp"
 
 namespace target {
 
@@ -14,7 +15,12 @@ concept HasToAsmMethod = requires(T t, CodegenContext& ctx) {
 
 auto to_asm_constant(int value) -> std::string;
 
-struct x86Instruction {
+struct TargetInstruction {
+    virtual auto to_asm(CodegenContext& ctx) const -> void = 0;
+    virtual ~TargetInstruction() = default;
+};
+
+struct x86Instruction : TargetInstruction {
     virtual auto to_asm(CodegenContext& ctx) const -> void = 0;
     virtual ~x86Instruction() = default;
 

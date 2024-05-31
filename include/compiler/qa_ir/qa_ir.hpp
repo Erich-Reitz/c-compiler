@@ -7,6 +7,7 @@
 
 #include "../../ast/ast.hpp"
 #include "../target/qa_x86_registers.hpp"
+#include "../target/register.hpp"
 
 namespace qa_ir {
 

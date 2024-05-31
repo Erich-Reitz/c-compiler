@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "qa_x86_registers.hpp"
+#include "register.hpp"
 
 namespace target {
 
