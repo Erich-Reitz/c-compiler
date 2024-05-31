@@ -10,7 +10,7 @@
 #include "../../../include/ast/DataType.hpp"
 #include "qa_x86_instructions.hpp"
 #include "qa_x86_locations.hpp"
-#include "qa_x86_registers.hpp"
+#include "virtual_register.hpp"
 
 namespace target {
 [[nodiscard]] int SizeOf(const Location& loc);

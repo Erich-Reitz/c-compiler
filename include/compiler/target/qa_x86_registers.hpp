@@ -4,6 +4,8 @@
 #include <variant>
 #include <vector>
 
+#include "virtual_register.hpp"
+
 namespace target {
 const int address_size = 8;
 
@@ -58,14 +60,6 @@ inline const std::vector<BaseRegister> general_regs = {
     BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15};
 
 bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
-
-enum class VirtualRegisterKind { INT, FLOAT };
-
-struct VirtualRegister {
-    int id = -1;
-    int size = -1;
-    VirtualRegisterKind kind = VirtualRegisterKind::INT;
-};
 
 using Register = std::variant<HardcodedRegister, VirtualRegister>;
 

@@ -1,6 +1,6 @@
 #include "../../../include/compiler/target/allocator.hpp"
 
-#include "../../../include/compiler/target/qa_x86.hpp"
+#include "../../../include/compiler/target/target.hpp"
 
 namespace target {
 [[nodiscard]] auto getFirstUse(const Frame& frame) -> FirstLastUse;

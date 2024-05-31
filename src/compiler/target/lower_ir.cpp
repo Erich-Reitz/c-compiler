@@ -8,7 +8,7 @@
 #include <variant>
 
 #include "../../../include/ast/ast.hpp"
-#include "../../../include/compiler/target/qa_x86.hpp"
+#include "../../../include/compiler/target/target.hpp"
 
 namespace target {
 using bt = ast::BaseType;

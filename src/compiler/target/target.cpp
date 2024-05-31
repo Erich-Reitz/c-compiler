@@ -1,4 +1,4 @@
-#include "../../../include/compiler/target/qa_x86.hpp"
+#include "../../../include/compiler/target/target.hpp"
 
 namespace target {
 
