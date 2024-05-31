@@ -13,6 +13,9 @@
 #include "virtual_register.hpp"
 
 namespace target {
+
+[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister;
+
 [[nodiscard]] int SizeOf(const Location& loc);
 int sixteenByteAlign(int size);
 

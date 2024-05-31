@@ -47,7 +47,7 @@ struct HardcodedRegister {
     int size;
 };
 
-[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister;
+bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
 // six system V calling convention registers
 inline const std::vector<BaseRegister> param_regs = {BaseRegister::DI, BaseRegister::SI,
@@ -58,7 +58,5 @@ inline const std::vector<BaseRegister> param_regs = {BaseRegister::DI, BaseRegis
 inline const std::vector<BaseRegister> general_regs = {
     BaseRegister::AX,  BaseRegister::BX,  BaseRegister::R10, BaseRegister::R11,
     BaseRegister::R12, BaseRegister::R13, BaseRegister::R14, BaseRegister::R15};
-
-bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs);
 
 }  // namespace target

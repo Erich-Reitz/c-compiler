@@ -15,11 +15,4 @@ bool operator==(const HardcodedRegister& lhs, const HardcodedRegister& rhs) {
     return std::find(float_regs.begin(), float_regs.end(), p_reg) != float_regs.end();
 }
 
-[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister {
-    if (static_cast<size_t>(idx) >= param_regs.size()) {
-        throw std::runtime_error("param_register_by_convention: idx out of bounds");
-    }
-    return HardcodedRegister{.reg = param_regs[idx], .size = size};
-}
-
 }  // namespace target

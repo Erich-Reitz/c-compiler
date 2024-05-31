@@ -17,4 +17,12 @@ int sixteenByteAlign(int size) { return size % 16 == 0 ? size : size + (16 - (si
     }
     throw std::runtime_error("SizeOf called on an unknown location");
 }
+
+[[nodiscard]] auto param_register_by_convention(int idx, int size) -> HardcodedRegister {
+    if (static_cast<size_t>(idx) >= param_regs.size()) {
+        throw std::runtime_error("param_register_by_convention: idx out of bounds");
+    }
+    return HardcodedRegister{.reg = param_regs[idx], .size = size};
+}
+
 }  // namespace target

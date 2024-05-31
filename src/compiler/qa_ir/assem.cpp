@@ -11,6 +11,8 @@
 #include <variant>
 #include <vector>
 
+#include "../../../include/compiler/target/target.hpp"
+
 namespace qa_ir {
 
 namespace {

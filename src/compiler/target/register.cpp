@@ -14,6 +14,7 @@ bool operator<(const Register& lhs, const Register& rhs) {
     }
     return false;
 }
+
 [[nodiscard]] auto is_float_register(VirtualRegister p_reg) -> bool {
     return (p_reg).kind == VirtualRegisterKind::FLOAT;
 }
